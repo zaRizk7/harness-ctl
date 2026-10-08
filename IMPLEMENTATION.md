@@ -19,6 +19,28 @@ Project-local instructions, skills, roles and hook policies come from
 https://github.com/zaRizk7/claude-coding-directives at
 dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
 
+The project adapts these instructions for Codex: repository skills live under
+`.agents/skills/`, portable role briefs under `.agents/roles/`, and `AGENTS.md`
+routes the macOS TUI workflow. Upstream hook policies remain enforced.
+
+## Component management acceptance
+
+The user confirmed item-level management on 2026-10-08. Preservation toggles and
+profile exclusions alone do not satisfy these criteria.
+
+| Code | Acceptance | Evidence |
+| --- | --- | --- |
+| C1 | Dedicated TUI categories list individual skills, MCP registrations, plugins, connectors, proxies and hooks | Pending |
+| C2 | Add/install and edit concrete local resources or native registrations | Pending |
+| C3 | Enable/disable individual entries without losing their configuration, and remove selected entries | Pending |
+| C4 | Component changes use approved previews, shared-owner selection, stale checks, encrypted recovery and rollback | Pending |
+| C5 | Native capabilities, local file operations and account-managed connections are labelled accurately | Pending |
+| C6 | User controls, code ownership and test evidence are documented | In progress |
+
+Current audit: lifecycle preservation is implemented, but dedicated component
+management was absent. Implement the missing workflow without claiming that
+arbitrary file edits provision remote accounts or install vendor packages.
+
 ## Current status
 
 - Repository and executable are named `harness-ctl`.

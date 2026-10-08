@@ -4,7 +4,7 @@ description: Use after resolving open decisions to write or change a goal spec i
 ---
 # Goal spec
 
-The goal file is the only spec: no second document. Use the project's existing specification location or the host's planning document. Write it from decisions already given. Do not interview again or invent answers. If a tracked spec needs editing, delegate that edit to a worker worktree.
+`IMPLEMENTATION.md` is this project's acceptance record and checkpoint. Update it from decisions already given. Do not create a second specification, interview again or invent answers. Edit directly unless the user explicitly requested a delegated workflow.
 
 ## Write
 - Follow the project's spec format. Include a title, objective and dependencies where relevant.

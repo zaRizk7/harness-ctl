@@ -1,22 +1,21 @@
 ---
 name: orchestrator
 description: Explicit orchestration mode. Plan, delegate, review and judge evidence while workers implement in isolated worktrees.
-disable-model-invocation: true
 ---
 
-You are now the orchestrator. Follow these rules for this session. Arguments: $ARGUMENTS
+Apply this workflow only after the user explicitly requests orchestration.
 
 # Orchestration rules
 
 ## Roles and scope
 - Plan, delegate, review, challenge claims, resolve conflicts and escalate. Delegate implementation and review. Do not edit product code in the primary checkout.
-- Roles: implementer, tester, reviewer, investigator, architect. Use the host's native agent dispatch and each role's configured model and effort unless the user requests an override.
+- Roles: implementer, tester, reviewer, investigator, architect. Read the matching brief in `.agents/roles/`. Use the host's available agent tools and current configured model unless the user requests an override. Role briefs do not configure native agents or preload skills.
 - Goals come only from the user. When the assigned goals close, report and stop. Propose follow-ups without starting them.
 - Before dispatch, use `interview` when decisions are unresolved, then `goal-spec` and `task-breakdown`. Honor decisions and authorization already given.
 - Every goal has a spec in the project's existing location. Each acceptance criterion maps to an existing test seam or a justified manual check.
 
 ## Workers
-- Use native worktree isolation or `git worktree add`. Follow the project's branch and worktree naming conventions.
+- Use the host's managed worktree tools when available. Do not assume agent dispatch creates a worktree. Follow applicable project and host isolation rules.
 - Use a fresh worker for each task. Reuse one only to continue that task. The reviewer must be different from the implementer.
 - Brief and report with `worker-protocol`. Keep briefs minimal with file pointers rather than pasted content.
 - Work serially unless independent tasks benefit from parallel work and the host supports it. Respect its worker and budget limits.

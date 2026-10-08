@@ -68,6 +68,8 @@ var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall",
 func newModel(e *engine) tuiModel {
 	return tuiModel{e: e, screen: "home", width: 90, height: 28, status: "Reading executable and package metadata…"}
 }
+
+// Init reads metadata without executing a harness or mutating its state.
 func (m tuiModel) Init() tea.Cmd { return m.inventory() }
 func (m tuiModel) inventory() tea.Cmd {
 	return func() tea.Msg {
@@ -169,6 +171,7 @@ func (m *tuiModel) startOperation(work func(context.Context, func(string)) error
 	return waitEvent(events)
 }
 
+// Update advances the interaction or reports progress from an approved operation.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -589,6 +592,7 @@ func mark(v bool) string {
 	return "[ ]"
 }
 
+// View renders metadata and approval controls without displaying state values.
 func (m tuiModel) View() tea.View {
 	var lines []string
 	inst := m.selectedInst()

@@ -173,6 +173,12 @@ or use `--root` to derive it automatically.
 
 ## Verification and development
 
+Start Codex in this repository. `AGENTS.md` describes the project boundaries and
+required workflows. Skills live in `.agents/skills/`. Portable role briefs in
+`.agents/roles/` are used only for explicitly requested delegation. See the
+[code architecture](docs/architecture.md) for module responsibilities and the
+[acceptance checkpoint](IMPLEMENTATION.md) for verified and missing behavior.
+
 ```sh
 make hooks
 make check

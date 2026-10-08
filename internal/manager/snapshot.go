@@ -30,9 +30,12 @@ type keyStore interface {
 }
 type keychainStore struct{}
 
+// Get reads the manager storage identity from the native credential store.
 func (keychainStore) Get(account string) (string, error) {
 	return keyring.Get(keychainService, account)
 }
+
+// Set persists the recovery identity before any encrypted snapshot is published.
 func (keychainStore) Set(account, value string) error {
 	return keyring.Set(keychainService, account, value)
 }
