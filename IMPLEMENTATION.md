@@ -40,6 +40,12 @@ dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
   A synthetic child-write regression failed before this guard and passed after it.
 - Homebrew ownership requires an adapter's explicit harness package binding.
   Shared Python/Node runtime packages cannot be claimed from a CLI path alone.
+- Service ownership requires a matching approved label and launch executable.
+  Regression tests rejected environment, working-directory, later-argument,
+  nested and duplicate-key references after failing against the prior validator.
+- Managed update/reinstall with an owned LaunchAgent and tracked Hermes
+  update/reinstall are blocked before commands until native rebinding is verified.
+  Both blockers have test-first regressions with synthetic installations.
 - A real pseudo-terminal smoke test passed home/action/recovery navigation and
   keyboard exit. Read-only startup/navigation wrote no manager state.
 - The latest Apple Silicon binary was launched in Terminal. Its live action
@@ -53,6 +59,9 @@ dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
 
 - Live vendor installers, real Keychain prompts and real service restarts have
   not been exercised. Tests cover synthetic adapter and transaction contracts.
+- Managed update/reinstall requires removing owned LaunchAgent registrations
+  separately. Tracked Hermes update/reinstall requires its native updater or
+  migration to a managed installation. These combinations do not execute.
 - Profile exclusions apply to copied file state and manager shims. Project/system
   sources, OS credentials and inherited API credentials retain native behavior.
 - Opaque, JSONC, dotenv and database resources use whole-resource categories.

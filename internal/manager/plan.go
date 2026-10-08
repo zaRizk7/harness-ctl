@@ -84,6 +84,14 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	if p.Request.Model != "isolated" && p.Request.Model != "tracked" {
 		return nil, fmt.Errorf("invalid installation model")
 	}
+	if req.Action == "update" || req.Action == "reinstall" {
+		if p.Install.Managed && len(p.Install.ServicePaths) > 0 {
+			p.Blockers = append(p.Blockers, "Managed prefix replacement requires verified service rebinding. Remove the selected installation's LaunchAgent registration before updating or reinstalling.")
+		}
+		if s.ID == "hermes" && p.Request.Model == "tracked" {
+			p.Blockers = append(p.Blockers, "Tracked Hermes update/reinstall requires verified native launcher rebinding. Migrate to an isolated managed installation, or use the native updater.")
+		}
+	}
 	p.StateRoot = e.stateRoot(s)
 	if p.Install.Managed {
 		p.StateRoot = p.Install.StateRoot

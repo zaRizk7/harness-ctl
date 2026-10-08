@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"fmt"
@@ -10,6 +11,78 @@ import (
 	"strconv"
 	"strings"
 )
+
+type plistElement struct {
+	XMLName xml.Name
+	Text    string         `xml:",chardata"`
+	Values  []plistElement `xml:",any"`
+}
+
+func serviceProgram(data []byte, label string) (string, error) {
+	decoder := xml.NewDecoder(bytes.NewReader(data))
+	var doc plistElement
+	if err := decoder.Decode(&doc); err != nil {
+		return "", fmt.Errorf("service must be a readable XML plist: %w", err)
+	}
+	for {
+		token, err := decoder.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		switch value := token.(type) {
+		case xml.CharData:
+			if strings.TrimSpace(string(value)) != "" {
+				return "", fmt.Errorf("unexpected trailing plist content")
+			}
+		case xml.Comment, xml.ProcInst:
+		default:
+			return "", fmt.Errorf("unexpected trailing plist content")
+		}
+	}
+	if doc.XMLName.Local != "plist" || len(doc.Values) != 1 || doc.Values[0].XMLName.Local != "dict" {
+		return "", fmt.Errorf("service must contain one plist dictionary")
+	}
+	values := doc.Values[0].Values
+	fields := map[string]plistElement{}
+	if len(values)%2 != 0 {
+		return "", fmt.Errorf("malformed service dictionary")
+	}
+	for i := 0; i < len(values); i += 2 {
+		key := values[i]
+		if key.XMLName.Local != "key" || len(key.Values) != 0 || key.Text == "" {
+			return "", fmt.Errorf("malformed service key")
+		}
+		// Duplicate keys have ambiguous platform semantics, so they cannot
+		// establish ownership or authorize service mutation.
+		if _, exists := fields[key.Text]; exists {
+			return "", fmt.Errorf("duplicate service key: %s", key.Text)
+		}
+		fields[key.Text] = values[i+1]
+	}
+	identity := fields["Label"]
+	if identity.XMLName.Local != "string" || len(identity.Values) != 0 || identity.Text != label {
+		return "", fmt.Errorf("service label does not match its approved filename")
+	}
+	if program, exists := fields["Program"]; exists {
+		if program.XMLName.Local != "string" || len(program.Values) != 0 {
+			return "", fmt.Errorf("invalid service program")
+		}
+		return program.Text, nil
+	}
+	args := fields["ProgramArguments"]
+	if args.XMLName.Local != "array" || len(args.Values) == 0 {
+		return "", fmt.Errorf("service has no launch executable")
+	}
+	for _, arg := range args.Values {
+		if arg.XMLName.Local != "string" || len(arg.Values) != 0 {
+			return "", fmt.Errorf("invalid service arguments")
+		}
+	}
+	return args.Values[0].Text, nil
+}
 
 func (e *engine) validateService(inst installation, path string) error {
 	s, err := specFor(inst.Harness)
@@ -28,28 +101,19 @@ func (e *engine) validateService(inst installation, path string) error {
 		return err
 	}
 	defer f.Close()
-	decoder := xml.NewDecoder(io.LimitReader(f, e.cfg.MetadataBytes))
-	owned := false
-	for {
-		token, err := decoder.Token()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("service must be a readable XML plist: %w", err)
-		}
-		if start, ok := token.(xml.StartElement); ok && start.Name.Local == "string" {
-			var value string
-			if err = decoder.DecodeElement(&value, &start); err != nil {
-				return err
-			}
-			if value == inst.Path || (inst.Root != "" && filepath.IsAbs(value) && within(inst.Root, value)) {
-				owned = true
-			}
-		}
+	data, err := io.ReadAll(io.LimitReader(f, e.cfg.MetadataBytes+1))
+	if err != nil {
+		return err
 	}
-	if !owned {
-		return fmt.Errorf("service does not reference the selected installation: %s", path)
+	if int64(len(data)) > e.cfg.MetadataBytes {
+		return fmt.Errorf("service metadata exceeds configured limit")
+	}
+	program, err := serviceProgram(data, label)
+	if err != nil {
+		return err
+	}
+	if !filepath.IsAbs(program) || (program != inst.Path && (inst.Root == "" || !within(inst.Root, program))) {
+		return fmt.Errorf("service does not launch the selected installation: %s", path)
 	}
 	return nil
 }

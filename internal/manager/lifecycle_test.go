@@ -295,3 +295,32 @@ func TestNativeRecipesUseVerifiedInstallerContracts(t *testing.T) {
 		})
 	}
 }
+
+func TestTrackedHermesUpdateRequiresVerifiedLauncherBinding(t *testing.T) {
+	for _, action := range []string{"update", "reinstall"} {
+		t.Run(action, func(t *testing.T) {
+			e, r := testEngine(t)
+			e.client = fixtureHTTP{body: "#!/bin/sh\nexit 0\n"}
+			s, _ := specFor("hermes")
+			root := filepath.Join(e.stateRoot(s), "hermes-agent")
+			if err := atomicWrite(filepath.Join(root, "pyproject.toml"), []byte("[project]\nname = 'hermes-agent'\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			bin := filepath.Join(e.cfg.Home, ".local", "bin")
+			if err := atomicWrite(filepath.Join(bin, s.Command), []byte("#!/bin/sh\nexec '"+filepath.Join(root, "venv", "bin", "python")+"' -m hermes_cli \"$@\"\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", bin)
+			p, err := e.buildPlan(context.Background(), request{Harness: s.ID, Action: action, Target: strings.Repeat("a", 40)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if p.Install.Method != "native-hermes" || !strings.Contains(strings.Join(p.Blockers, " "), "launcher rebinding") {
+				t.Fatal("tracked Hermes accepted an unverified legacy launcher", p.Blockers)
+			}
+			if err = e.execute(context.Background(), p, p.ID, nil); err == nil || len(r.calls) != 0 {
+				t.Fatal("blocked Hermes update invoked native commands", err)
+			}
+		})
+	}
+}

@@ -92,8 +92,17 @@ Shared files stay intact unless every listed affected owner is selected. Linked
 sources and user workspaces are protected. Runtime checkouts, dependency stores
 and project files have separate ownership and are excluded from generic reset.
 Known LaunchAgents are stopped only after their plist proves ownership by the
-selected installation. Previously loaded services are resumed, except after a
+selected installation's launch executable and approved label. Environment,
+working-directory and later argument references do not establish ownership.
+Managed update/reinstall is blocked while an owned LaunchAgent remains registered
+because native rebinding to a replacement prefix has not been verified. Remove
+that service registration separately before replacing its managed installation.
+Previously loaded services are resumed, except after a
 successful uninstall. A running affected client blocks mutation.
+
+Tracked Hermes update/reinstall is blocked because native rebinding of older
+global launchers has not been verified. Use its native updater or migrate to a
+managed installation. Tracked reset and uninstall remain available.
 
 ## Launch source profiles
 
