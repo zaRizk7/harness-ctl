@@ -50,13 +50,13 @@ func fieldCategory(key string) category {
 	switch n {
 	case "mcp", "mcpservers":
 		return mcp
-	case "skills", "skillpaths", "skillsources":
+	case "skills", "skillpaths", "skillsources", "disabledskills":
 		return skills
-	case "plugins", "extensions", "enabledplugins", "extraknownmarketplaces":
+	case "plugin", "plugins", "extensions", "enabledplugins", "extraknownmarketplaces":
 		return plugins
 	case "hooks", "disableallhooks":
 		return hooks
-	case "connectors", "channels", "integrations", "pairing":
+	case "apps", "connectors", "channels", "integrations", "pairing":
 		return connectors
 	case "proxy", "httpproxy", "httpsproxy", "noproxy", "proxies":
 		return proxies
@@ -225,6 +225,31 @@ func (e *engine) resources(s harnessSpec) ([]resource, error) {
 		}
 		for _, entry := range entries {
 			name := entry.Name()
+			if name == disabledComponentsDir {
+				if err := validateOwnedPath(root, filepath.Join(root, name)); err != nil {
+					return nil, err
+				}
+				parked, err := os.ReadDir(filepath.Join(root, name))
+				if err != nil {
+					return nil, err
+				}
+				for _, group := range parked {
+					cat := category(group.Name())
+					if !knownCategory(cat) || !group.IsDir() {
+						return nil, fmt.Errorf("unclassified disabled component state")
+					}
+					r := resource{Path: filepath.Join(root, name, group.Name()), Root: root, Category: cat, Owners: []string{s.ID}}
+					if len(s.SharedClients) > 0 && !within(e.cfg.Root, root) {
+						r.Owners = append(r.Owners, s.SharedClients...)
+					}
+					r.Digest, err = fingerprint(r.Path)
+					if err != nil {
+						return nil, err
+					}
+					result = append(result, r)
+				}
+				continue
+			}
 			// Runtime payloads, source checkouts and workspaces have independent
 			// ownership. A reset must never remove them as generic user state.
 			if name == "packages" || name == "hermes-agent" || name == "tools" || name == "installs" || name == "node_modules" || name == "bin" || name == ".git" || name == "workspace" || strings.HasPrefix(name, "workspace-") {
@@ -293,6 +318,13 @@ func (e *engine) resources(s harnessSpec) ([]resource, error) {
 			}
 			result = append(result, r)
 		}
+	}
+	if s.ID == "codex" {
+		skills, err := e.codexSkillResources()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, skills...)
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Path < result[j].Path })
 	return result, nil

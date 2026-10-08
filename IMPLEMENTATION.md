@@ -30,16 +30,32 @@ profile exclusions alone do not satisfy these criteria.
 
 | Code | Acceptance | Evidence |
 | --- | --- | --- |
-| C1 | Dedicated TUI categories list individual skills, MCP registrations, plugins, connectors, proxies and hooks | Pending |
-| C2 | Add/install and edit concrete local resources or native registrations | Pending |
-| C3 | Enable/disable individual entries without losing their configuration, and remove selected entries | Pending |
-| C4 | Component changes use approved previews, shared-owner selection, stale checks, encrypted recovery and rollback | Pending |
-| C5 | Native capabilities, local file operations and account-managed connections are labelled accurately | Pending |
-| C6 | User controls, code ownership and test evidence are documented | In progress |
+| C1 | Dedicated TUI categories list individual skills, MCP registrations, plugins, connectors, proxies and hooks | Named-entry inventory, category/navigation tests and isolated PTY |
+| C2 | Add/install and edit concrete local resources or native registrations | Field/asset CRUD, Claude/Gemini native contracts, editor validation and PTY add preview |
+| C3 | Enable/disable individual entries without losing their configuration, and remove selected entries | Skill import/restore, native flags, array restoration/removal and disabled-file editing |
+| C4 | Component changes use approved previews, shared-owner selection, stale checks, encrypted recovery and rollback | Stale/changed-plan rejection, shared Codex skills, recovery, native rollback, cancellation and profile scope |
+| C5 | Native capabilities, local file operations and account-managed connections are labelled accurately | Native/local labels, scoped warnings and operator capability table |
+| C6 | User controls, code ownership and test evidence are documented | README, operator guide, architecture and this checkpoint |
 
-Current audit: lifecycle preservation is implemented, but dedicated component
-management was absent. Implement the missing workflow without claiming that
-arbitrary file edits provision remote accounts or install vendor packages.
+Dedicated management now uses approved item-level operations. Native commands
+are limited to verified Claude plugin and Gemini extension contracts. Local
+registration/file edits do not provision remote accounts or prove vendor loader
+support. (Local workspace, 2026)
+
+Component verification on 2026-10-08 observed test-first failures for parked
+array edit/removal, structured asset validation, shared user skills, native
+source arguments/result checks, preview labels, disabled-directory browsing,
+scope relocation, external native payloads and cancellation. An editor
+fingerprint mutation exposed concurrent disabled-state changes and was reverted.
+All focused regressions then passed. `make check` passed formatting, vet and
+race tests. The isolated PTY passed categories, named entries, affected owners,
+disable/add previews, the typed-approval guard, external editing, cancellation
+and clean exit with zero manager writes. (Local workspace, 2026)
+
+The final all-files pre-commit run passed the directive hooks and Go formatting,
+vet and race tests. The feature remains verified with synthetic state and fake
+native commands. Live vendor execution is excluded from this evidence.
+(Local workspace, 2026)
 
 ## Current status
 
@@ -70,7 +86,7 @@ arbitrary file edits provision remote accounts or install vendor packages.
   Both blockers have test-first regressions with synthetic installations.
 - A real pseudo-terminal smoke test passed home/action/recovery navigation and
   keyboard exit. Read-only startup/navigation wrote no manager state.
-- The latest Apple Silicon binary was launched in Terminal. Its live action
+- A prior Apple Silicon binary was launched in Terminal. Its live action
   screen was inspected in the specifically created Terminal tab.
 - Verification uses synthetic installations, isolated temporary homes, fake
   runners and in-memory recovery keys. No live harness lifecycle commands were
@@ -79,6 +95,14 @@ arbitrary file edits provision remote accounts or install vendor packages.
 
 ## Material limits
 
+- Component screens manage local registrations/assets. Remote authorization,
+  account provisioning, OS secrets and external installer side effects remain
+  native. Parked disabled state is plaintext under private directories, while
+  recovery snapshots remain encrypted. See `docs/components.md`.
+- Native Claude plugins whose ledger points outside selected captured state are
+  rejected before execution. Copied native payloads may require reinstalling
+  through the vendor in the selected scope. Gemini native commands require a
+  HOME containing the selected `.gemini` directory.
 - Live vendor installers, real Keychain prompts and real service restarts have
   not been exercised. Tests cover synthetic adapter and transaction contracts.
 - Managed update/reinstall requires removing owned LaunchAgent registrations
@@ -101,3 +125,11 @@ arbitrary file edits provision remote accounts or install vendor packages.
 - Validate all snapshot members before restoration. Encrypt before writing snapshot payloads.
 - Preserve runtime and dependency ownership. Do not remove shared dependencies.
 - Treat installed harness capabilities as adapter-specific. Report unsupported combinations explicitly.
+
+## References
+
+- Local workspace (2026). [Component tests](internal/manager/components_test.go),
+  [TUI tests](internal/manager/tui_test.go), [operator guide](docs/components.md),
+  [architecture](docs/architecture.md), [agent instructions](AGENTS.md).
+- zaRizk7 (2026). [Coding directives](https://github.com/zaRizk7/claude-coding-directives),
+  pinned at `dff6aa85dc2644bba4ea71b6c6d421bc7a260f74`.

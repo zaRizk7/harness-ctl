@@ -160,8 +160,18 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 	for _, step := range p.Steps {
 		progress(step.Description)
 		if _, err = e.run.Run(ctx, step); err != nil {
+			if p.Component != nil && p.Component.Native {
+				return fmt.Errorf("native component command failed. Its output is withheld because it may contain configuration secrets")
+			}
 			return err
 		}
+	}
+	if p.Request.Action == "manage" {
+		if err = e.applyComponent(ctx, p); err != nil {
+			return err
+		}
+		progress("Verified. Component operation complete.")
+		return nil
 	}
 	if p.Request.Action == "uninstall" {
 		if err = e.removeInstallation(p.Install); err != nil {
@@ -575,6 +585,11 @@ func (e *engine) migrateState(p *plan) error {
 		}
 		if err := copyTree(r.Path, dest); err != nil {
 			return err
+		}
+		if strings.Contains(r.Path, string(filepath.Separator)+disabledComponentsDir+string(filepath.Separator)) {
+			if err := relocateParkedComponents(p.StateRoot, target, dest); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

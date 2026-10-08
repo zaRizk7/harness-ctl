@@ -42,12 +42,20 @@ files. State inventory is read when you request an operation preview.
 | Permanent discard | Type `discard` and Enter |
 | Launch profile | Space selects exclusions, Enter previews, type `profile` |
 | Profile base launch | `b` returns to base state and retains profile files |
+| Component categories | Enter lists skills, MCP, plugins, connectors, proxies, hooks and other local assets |
+| Component entries | `a` add/install, `e` edit, `d` disable, `u` enable, `x` remove |
+| Component ownership/scope | `o` selects owners, `p` switches base/profile, `r` refreshes |
 | Recovery | Enter previews restore, Space selects affected owners, type `restore` |
 | Interrupted operation | Type `recover` to restore its journaled snapshot |
 | Snapshot deletion | `x`, then type `purge` and Enter |
 | Running operation | Ctrl+C cancels and waits for rollback |
 
 No lifecycle operation runs from merely selecting a harness or opening a preview.
+
+**Manage components** provides item-level controls and approved previews.
+Add/install and edit use your configured editor. See the
+[component operator guide](docs/components.md) for request examples, per-harness
+capabilities, parked state and recovery limits. (Local workspace, 2026)
 
 ## Installation and state ownership
 

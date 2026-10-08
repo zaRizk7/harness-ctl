@@ -6,6 +6,14 @@ import (
 	"testing"
 )
 
+func TestNativeComponentFieldsAreClassified(t *testing.T) {
+	for field, want := range map[string]category{"apps": connectors, "plugin": plugins, "disabledSkills": skills, "mcp_servers": mcp} {
+		if got := fieldCategory(field); got != want {
+			t.Errorf("%s category = %s, want %s", field, got, want)
+		}
+	}
+}
+
 func TestSelectiveResetKeepsUnknownSettingsAndAuthentication(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "settings.json")

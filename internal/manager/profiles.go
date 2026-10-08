@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (e *engine) createProfile(inst installation, disabled map[category]bool) error {
@@ -52,6 +53,11 @@ func (e *engine) createProfile(inst installation, disabled map[category]bool) er
 		}
 		if err = copyTree(r.Path, dest); err != nil {
 			return err
+		}
+		if strings.Contains(r.Path, string(filepath.Separator)+disabledComponentsDir+string(filepath.Separator)) {
+			if err = relocateParkedComponents(inst.StateRoot, nativeStateRoot(s, root), dest); err != nil {
+				return err
+			}
 		}
 		copied := r
 		copied.Path = dest

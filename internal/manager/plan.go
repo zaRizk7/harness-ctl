@@ -15,6 +15,12 @@ import (
 var targetPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
 
 func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
+	if req.Action == "manage" {
+		if req.Permanent || req.RemoveOld {
+			return nil, fmt.Errorf("component changes use recoverable item-level operations")
+		}
+		req.Preserve = keepAll()
+	}
 	registryDigest, err := fingerprint(e.statePath)
 	if err != nil {
 		return nil, err
@@ -38,7 +44,7 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 		p.Request.Preserve = keepAll()
 	}
 	switch req.Action {
-	case "install", "uninstall", "reinstall", "reset", "update", "migrate", "profile":
+	case "install", "uninstall", "reinstall", "reset", "update", "migrate", "profile", "manage":
 	default:
 		return nil, fmt.Errorf("unknown lifecycle action")
 	}
@@ -59,9 +65,12 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 			}
 		}
 		if p.Install.ID == "" {
-			return nil, fmt.Errorf("selected installation no longer exists")
+			if req.Action != "manage" || req.InstallID != "" {
+				return nil, fmt.Errorf("selected installation no longer exists")
+			}
+			p.Install = installation{Harness: s.ID, Method: "state-only"}
 		}
-		if p.Install.Method == "unknown" && req.Action != "reset" {
+		if p.Install.Method == "unknown" && req.Action != "reset" && req.Action != "manage" {
 			p.Blockers = append(p.Blockers, "Installation ownership is unverified. Choose an independently verified managed installation.")
 		}
 	}
@@ -95,6 +104,13 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	p.StateRoot = e.stateRoot(s)
 	if p.Install.Managed {
 		p.StateRoot = p.Install.StateRoot
+	}
+	if req.Action == "manage" && req.Component != nil && req.Component.Scope == "profile" {
+		state, _, err := e.componentEngine(p.Install, "profile")
+		if err != nil {
+			return nil, err
+		}
+		p.StateRoot = state.stateRoot(s)
 	}
 	if req.Action == "install" && p.Request.Model == "isolated" {
 		p.StateRoot = e.managedStateRoot(s)
@@ -179,7 +195,13 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	if len(s.SharedClients) > 0 && p.Request.Model == "tracked" {
 		p.Warnings = append(p.Warnings, "Close affected desktop and IDE clients before applying. Preserved shared files are included in encrypted rollback recovery.")
 	}
-	if len(p.Blockers) == 0 && req.Action != "reset" && req.Action != "uninstall" && req.Action != "profile" {
+	if req.Action == "manage" {
+		if err := e.planComponent(p); err != nil {
+			return nil, err
+		}
+		p.Component.Digest = componentPlanDigest(p)
+	}
+	if len(p.Blockers) == 0 && req.Action != "reset" && req.Action != "uninstall" && req.Action != "profile" && req.Action != "manage" {
 		if err := e.installRecipe(ctx, p); err != nil {
 			return nil, err
 		}
@@ -492,6 +514,9 @@ func (e *engine) uninstallRecipe(p *plan, inst installation) error {
 }
 
 func (e *engine) validatePlan(p *plan) error {
+	if p.Component != nil && p.Component.Digest != componentPlanDigest(p) {
+		return fmt.Errorf("component preview changed. Create a new preview")
+	}
 	if len(p.Blockers) > 0 {
 		return fmt.Errorf("operation is blocked: %s", strings.Join(p.Blockers, "; "))
 	}

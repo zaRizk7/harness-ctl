@@ -10,10 +10,11 @@ recovery. Adapters supply native contracts instead of a universal harness loop.
 | Entry and configuration | `cmd/harness-ctl/main.go`, `internal/manager/cli.go`, `types.go` | Parse options, validate storage, use the installed Go policy |
 | Adapter contracts | `catalog.go`, `discovery.go`, `plan.go` | Native state roots, verified install identity, lifecycle recipes |
 | State inventory | `state.go`, `safety.go` | Classify files/fields, identify owners, reject linked paths, fingerprint previews |
+| Component management | `components.go`, `components_native.go` | Item inventory, pointer/asset changes, disabled records, native plugin contracts and result verification |
 | Transaction | `execution.go`, `services.go` | Serialize mutations, coordinate owned services, snapshot, execute, verify and roll back |
 | Recovery | `snapshot.go`, `recovery.go` | Keychain identity, authenticated age archives, validated restoration and retention |
 | Launch profiles | `profiles.go`, `registry.go` | Copy scoped state, preserve profile writes and generate managed shims |
-| User interface | `tui.go` | Explicit screen transitions, category controls, typed approval and cancellation |
+| User interface | `tui.go`, `components_tui.go` | Screen transitions, external editor validation, owner/scope controls, typed approval and cancellation |
 | Package transport | `http.go`, `package.go` | Bounded downloads and previewed package integrity |
 
 File names in the table refer to `internal/manager/` unless an absolute repository
@@ -49,6 +50,22 @@ YAML edits preserve unrelated values. Opaque resources remain whole files or
 directories. Symlinks, shared clients and runtime payloads require explicit
 ownership treatment. Category classification alone is not a vendor capability
 contract or permission to execute an installer. (Local workspace, 2026)
+
+Component requests use the `manage` transaction action. Planning produces exact
+writes or native commands and a digest binding the approved request to its
+sources, owners and destinations. JSON pointers address map entries, array items
+and scalar settings. Disabled array records retain original positions, rebased
+after removal. Native enablement uses only documented flags/contracts. Other
+entries move into category-labelled parked storage, which remains local
+plaintext state. Recovery archives remain encrypted. (Local workspace, 2026)
+
+Codex user skills follow HOME separately from CODEX_HOME. Inventory includes
+only `.agents/skills` and its parked skill records, with shared ownership for
+base launches and private profile HOME ownership. Component editors check the
+actual active or parked source before and after editing. Temporary files are
+bounded and removed on every normal result path. Cancellable copying finishes
+before rollback. See the [operator guide](components.md) for supported native
+adapters and external-side-effect limits. (Local workspace, 2026)
 
 ## Agent documentation
 

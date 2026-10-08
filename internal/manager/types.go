@@ -199,6 +199,7 @@ type request struct {
 	Owners    []string
 	RemoveOld bool
 	Disabled  map[category]bool
+	Component *componentRequest
 }
 
 type plan struct {
@@ -221,6 +222,7 @@ type plan struct {
 	DependencyCommands []command
 	StateRoot          string
 	RootDigests        map[string]string
+	Component          *componentMutation
 }
 
 type operationRecord struct {

@@ -113,8 +113,21 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	if p.Request.Model == "isolated" && p.Destination != "" && p.Destination != p.Install.Root {
 		meta.Items = append(meta.Items, snapshotItem{Path: p.Destination, Root: filepath.Dir(p.Destination), Categories: []category{other}})
 	}
-	if p.Install.Root != "" && p.Request.Action != "reset" && p.Install.Method != "brew" {
+	if p.Install.Root != "" && p.Request.Action != "reset" && p.Request.Action != "manage" && p.Install.Method != "brew" {
 		meta.Items = append(meta.Items, snapshotItem{Path: p.Install.Root, Root: filepath.Dir(p.Install.Root), Categories: []category{other}})
+	}
+	if p.Component != nil && p.Component.Native {
+		state, _, err := e.componentEngine(p.Install, p.Component.Request.Scope)
+		if err != nil {
+			return meta, err
+		}
+		for _, root := range state.rootsFor(p.Spec) {
+			owners := []string{p.Spec.ID}
+			if !within(e.cfg.Root, root) {
+				owners = append(owners, p.Spec.SharedClients...)
+			}
+			meta.Items = append(meta.Items, snapshotItem{Path: root, Root: filepath.Dir(root), Categories: categories, Owners: owners})
+		}
 	}
 	if strings.HasPrefix(p.Install.Method, "native-") {
 		meta.Items = append(meta.Items, snapshotItem{Path: p.Install.Path, Root: filepath.Dir(p.Install.Path), Categories: []category{other}, Launcher: true})
@@ -498,7 +511,7 @@ func (e *engine) validRestoreItem(s harnessSpec, item snapshotItem, inst install
 		allowed = true
 	}
 	for _, root := range e.rootsFor(s) {
-		if within(root, item.Path) && item.Path != root {
+		if within(root, item.Path) {
 			allowed = true
 		}
 	}
@@ -507,6 +520,12 @@ func (e *engine) validRestoreItem(s harnessSpec, item snapshotItem, inst install
 	}
 	if s.ID == "claude" && item.Path == filepath.Join(e.cfg.Home, ".claude.json") {
 		allowed = true
+	}
+	if s.ID == "codex" {
+		root := e.codexSkillsRoot()
+		if within(filepath.Join(root, "skills"), item.Path) || within(filepath.Join(root, disabledComponentsDir, string(skills)), item.Path) {
+			allowed = true
+		}
 	}
 	for _, root := range []string{filepath.Join(e.cfg.Home, ".local/share/claude"), filepath.Join(e.cfg.Home, ".local/share/prime-agent"), filepath.Join(e.stateRoot(s), "packages/standalone"), filepath.Join(e.stateRoot(s), "hermes-agent")} {
 		if item.Path == root && item.Path == inst.Root {
@@ -763,8 +782,16 @@ func replaceTree(source, target string) error {
 }
 
 func copyTree(source, target string) error {
+	return copyTreeContext(context.Background(), source, target)
+}
+
+// Component imports use cancellable copying so rollback cannot race a writer.
+func copyTreeContext(ctx context.Context, source, target string) error {
 	return filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		rel, err := filepath.Rel(source, path)
@@ -798,11 +825,23 @@ func copyTree(source, target string) error {
 		if err != nil {
 			return err
 		}
-		_, copyErr := io.Copy(out, in)
+		_, copyErr := io.Copy(out, contextReader{ctx, in})
 		closeErr := out.Close()
 		if copyErr != nil {
 			return copyErr
 		}
 		return closeErr
 	})
+}
+
+type contextReader struct {
+	ctx    context.Context
+	reader io.Reader
+}
+
+func (r contextReader) Read(data []byte) (int, error) {
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(data)
 }

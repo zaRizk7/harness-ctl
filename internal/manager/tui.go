@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -60,10 +61,13 @@ type tuiModel struct {
 	selectedBackup  snapshotMeta
 	selectedRecord  operationRecord
 	profileDisabled map[category]bool
+	componentItems  []componentItem
+	componentCat    category
+	componentScope  string
 }
 
-var actionNames = []string{"Install isolated", "Update / upgrade", "Reinstall", "Factory reset", "Uninstall", "Migrate to isolated", "Launch source profile"}
-var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall", "migrate", "profile"}
+var actionNames = []string{"Install isolated", "Update / upgrade", "Reinstall", "Factory reset", "Uninstall", "Migrate to isolated", "Launch source profile", "Manage components"}
+var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall", "migrate", "profile", "manage"}
 
 func newModel(e *engine) tuiModel {
 	return tuiModel{e: e, screen: "home", width: 90, height: 28, status: "Reading executable and package metadata…"}
@@ -174,6 +178,26 @@ func (m *tuiModel) startOperation(work func(context.Context, func(string)) error
 // Update advances the interaction or reports progress from an approved operation.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case componentsMsg:
+		m.componentItems, m.owners = msg.items, msg.owners
+		m.screen, m.cursor = "components", 0
+		m.status = ""
+		if msg.err != nil {
+			m.status = msg.err.Error()
+		}
+	case componentEditorMsg:
+		if msg.cancelled {
+			m.screen, m.status = "components", "Editor closed without changes."
+			return m, nil
+		}
+		if msg.err != nil {
+			m.screen, m.status = "components", msg.err.Error()
+			return m, nil
+		}
+		m.req.Component = &msg.change
+		m.req.Component.Scope = m.componentScope
+		m.screen, m.status = "loading", "Creating a component preview…"
+		return m, m.preview()
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -198,6 +222,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case planMsg:
 		if msg.err != nil {
 			m.screen = "result"
+			if m.req.Action == "manage" {
+				m.screen = "components"
+			}
 			m.status = msg.err.Error()
 		} else {
 			m.p = msg.plan
@@ -343,6 +370,14 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	if key == "esc" {
+		if m.screen == "components" {
+			m.screen, m.cursor, m.status = "component-groups", 0, ""
+			return m, nil
+		}
+		if m.screen == "component-owners" {
+			m.screen, m.cursor = "components", 0
+			return m, nil
+		}
 		m.screen = "home"
 		m.cursor = m.harness
 		m.status = ""
@@ -359,6 +394,9 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 		return m, nil
+	}
+	if strings.HasPrefix(m.screen, "component") {
+		return m.componentKey(key)
 	}
 	switch m.screen {
 	case "home":
@@ -386,6 +424,15 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if key == "enter" {
 			inst := m.selectedInst()
 			action := actionIDs[m.cursor]
+			if action == "manage" {
+				m.componentScope = "base"
+				if _, exists := m.e.reg.Profiles[inst.ID]; exists {
+					m.componentScope = "profile"
+				}
+				m.req = request{Harness: catalog[m.harness].ID, InstallID: inst.ID, Action: "manage", Preserve: keepAll()}
+				m.screen, m.cursor = "component-groups", 0
+				return m, nil
+			}
 			if action != "install" && inst.ID == "" {
 				m.status = "Select an installed harness, or choose Install isolated."
 				return m, nil
@@ -479,6 +526,12 @@ func (m tuiModel) itemCount() int {
 		return len(m.records) + len(m.backups)
 	case "profile":
 		return len(categories)
+	case "component-groups":
+		return len(componentCategories)
+	case "components":
+		return len(m.componentItems)
+	case "component-owners":
+		return len(m.owners)
 	}
 	return 1
 }
@@ -603,6 +656,15 @@ func (m tuiModel) View() tea.View {
 	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(title), "")
 	hint := "↑/↓ navigate · Enter select · Esc home · q quit"
 	switch m.screen {
+	case "component-groups", "components", "component-owners":
+		lines = append(lines, m.componentView()...)
+		hint = "Enter browse · a add/install · e edit · d disable · u enable · x remove · o owners · p scope"
+		if m.screen == "component-groups" {
+			hint = "↑/↓ select category · Enter browse · Esc home"
+		}
+		if m.screen == "component-owners" {
+			hint = "↑/↓ navigate · Space select affected owner · Enter return"
+		}
 	case "home":
 		for i, s := range catalog {
 			count := 0
@@ -774,6 +836,20 @@ func (m tuiModel) previewLines() []string {
 			}
 		}
 	}
+	if p.Component != nil {
+		change := p.Component.Request
+		lines = append(lines, "Component: "+string(change.Category)+" / "+change.Operation+" / "+change.Scope, "Native source: "+change.Path+" "+change.Field, "Configuration values are hidden. Review them in your editor before approving.")
+		for _, write := range p.Component.Writes {
+			action := "WRITE "
+			if write.Remove {
+				action = "REMOVE "
+			}
+			lines = append(lines, action+write.Path)
+			if write.Source != "" {
+				lines = append(lines, "  IMPORT "+write.Source+" / "+write.SourceDigest)
+			}
+		}
+	}
 	if p.Destination != "" {
 		lines = append(lines, "Install destination: "+p.Destination)
 	}
@@ -782,7 +858,16 @@ func (m tuiModel) previewLines() []string {
 	}
 	for _, r := range p.Resources {
 		label := "KEEP"
-		if shouldChange(r, p.Request) {
+		if p.Component != nil {
+			if p.Component.Native && slices.Contains(resourceCategories(r), plugins) {
+				label = "NATIVE CHANGE"
+			}
+			for _, write := range p.Component.Writes {
+				if within(r.Path, write.Path) || within(write.Path, r.Path) {
+					label = "CHANGE"
+				}
+			}
+		} else if shouldChange(r, p.Request) {
 			label = "EDIT / DISCARD"
 		}
 		lines = append(lines, label+" "+r.Path+" ["+strings.Join(categoryStrings(resourceCategories(r)), ",")+"]")
