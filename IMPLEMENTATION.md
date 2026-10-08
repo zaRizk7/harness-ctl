@@ -38,6 +38,8 @@ dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
   purged only after running-client checks and successful rollback capture.
 - Cancellation stops an installer's complete process group before rollback.
   A synthetic child-write regression failed before this guard and passed after it.
+- Homebrew ownership requires an adapter's explicit harness package binding.
+  Shared Python/Node runtime packages cannot be claimed from a CLI path alone.
 - A real pseudo-terminal smoke test passed home/action/recovery navigation and
   keyboard exit. Read-only startup/navigation wrote no manager state.
 - The latest Apple Silicon binary was launched in Terminal. Its live action

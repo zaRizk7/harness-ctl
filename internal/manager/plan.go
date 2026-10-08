@@ -219,7 +219,7 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 
 func (e *engine) installRecipe(ctx context.Context, p *plan) error {
 	target := p.Request.Target
-	if p.Request.Action == "reinstall" && target == "" {
+	if p.Request.Action == "reinstall" && target == "" && p.Install.Method != "brew" {
 		target = p.Install.Version
 		if target == "unknown" {
 			return fmt.Errorf("current version is unavailable. Enter an exact supported target version.")

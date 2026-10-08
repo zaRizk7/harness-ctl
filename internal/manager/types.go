@@ -141,6 +141,7 @@ type harnessSpec struct {
 	Command        string
 	Package        string
 	LegacyPackages []string
+	BrewPackages   []string
 	HomeEnv        string
 	DefaultHome    string
 	Kind           string

@@ -131,6 +131,9 @@ func (e *engine) identify(s harnessSpec, resolved string, inst *installation) {
 		parts := strings.Split(resolved, "/")
 		for i, part := range parts {
 			if (part == "Cellar" || part == "Caskroom") && i+2 < len(parts) {
+				if !contains(s.BrewPackages, parts[i+1]) {
+					return
+				}
 				inst.Method = "brew"
 				inst.Package = parts[i+1]
 				inst.Root = strings.Join(parts[:i+3], "/")
