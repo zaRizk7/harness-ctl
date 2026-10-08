@@ -1,0 +1,64 @@
+minimum_pre_commit_version: '3.2.0'
+default_install_hook_types: [pre-commit, pre-merge-commit, commit-msg, pre-push]
+default_stages: [pre-commit, pre-merge-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: destroyed-symlinks
+        stages: [pre-commit, pre-merge-commit, pre-push]
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: trailing-whitespace
+        stages: [pre-commit, pre-merge-commit, pre-push]
+      - id: end-of-file-fixer
+        stages: [pre-commit, pre-merge-commit, pre-push]
+      # These hooks declare upstream stages. Include merge checks explicitly.
+      - id: check-executables-have-shebangs
+        stages: [pre-commit, pre-merge-commit, pre-push]
+      - id: check-shebang-scripts-are-executable
+        stages: [pre-commit, pre-merge-commit, pre-push]
+
+  - repo: https://github.com/jorisroovers/gitlint
+    rev: v0.19.1
+    hooks:
+      - id: gitlint
+        stages: [commit-msg]
+        args:
+          - --staged
+          - -c
+          - general.ignore=T3,T5,B5,B6,M1
+          - -c
+          - general.ignore-merge-commits=false
+          - -c
+          - general.ignore-squash-commits=false
+          - -c
+          - general.ignore-fixup-commits=false
+          - -c
+          - general.ignore-fixup-amend-commits=false
+          - -c
+          - general.ignore-revert-commits=false
+          - -c
+          - title-max-length.line-length=72
+          - -c
+          - 'title-match-regex.regex=\A(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|merge)(\([a-z0-9._/-]+\))?!?: \S.*\Z'
+          # Empty bodies prohibit prose and trailers, including Co-authored-by.
+          - -c
+          - 'body-match-regex.regex=\A\s*\Z'
+          - --msg-filename
+
+  - repo: local
+    hooks:
+      - id: go-quality
+        name: Go formatting, vet and race tests
+        entry: scripts/check-go.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-merge-commit, pre-push]
