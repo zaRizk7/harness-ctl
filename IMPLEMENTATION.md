@@ -36,6 +36,8 @@ dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
   was detected by its test and reverted.
 - A blocked permanent operation retains existing recovery. Older snapshots are
   purged only after running-client checks and successful rollback capture.
+- Cancellation stops an installer's complete process group before rollback.
+  A synthetic child-write regression failed before this guard and passed after it.
 - A real pseudo-terminal smoke test passed home/action/recovery navigation and
   keyboard exit. Read-only startup/navigation wrote no manager state.
 - The latest Apple Silicon binary was launched in Terminal. Its live action

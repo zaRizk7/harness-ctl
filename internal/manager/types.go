@@ -2,11 +2,13 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -97,6 +99,16 @@ type systemRunner struct{}
 func (systemRunner) Run(ctx context.Context, c command) (string, error) {
 	cmd := exec.CommandContext(ctx, c.Path, c.Args...)
 	cmd.Dir = c.Dir
+	// Installers spawn children. Rollback must wait until their process group
+	// has stopped, otherwise a child can overwrite the restored state.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		if errors.Is(err, syscall.ESRCH) {
+			return os.ErrProcessDone
+		}
+		return err
+	}
 	env := map[string]string{}
 	for _, pair := range os.Environ() {
 		k, v, ok := strings.Cut(pair, "=")
