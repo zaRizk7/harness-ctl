@@ -60,8 +60,25 @@ func TestRunningAffectedClientBlocksMutation(t *testing.T) {
 	}
 }
 
-type processRunner struct{}
+func TestIsolatedStateDoesNotCoordinateSharedDesktop(t *testing.T) {
+	e, _ := testEngine(t)
+	e.run = processRunner{output: "99999 /Applications/Codex.app/Contents/MacOS/Codex\n"}
+	s, _ := specFor("codex")
+	p := &plan{Spec: s, Request: request{Harness: s.ID, Action: "reset", Model: "isolated"}}
+	if err := e.checkProcesses(context.Background(), p); err != nil {
+		t.Fatal("isolated file state unnecessarily depended on shared desktop", err)
+	}
+	p.Request.Model = "tracked"
+	if err := e.checkProcesses(context.Background(), p); err == nil {
+		t.Fatal("tracked shared state ignored the running desktop")
+	}
+}
 
-func (processRunner) Run(context.Context, command) (string, error) {
+type processRunner struct{ output string }
+
+func (r processRunner) Run(context.Context, command) (string, error) {
+	if r.output != "" {
+		return r.output, nil
+	}
 	return "99999 /synthetic/pi --interactive\n", nil
 }

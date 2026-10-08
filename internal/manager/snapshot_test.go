@@ -182,3 +182,24 @@ func TestMissingDisplayIndexDoesNotHideEncryptedRecovery(t *testing.T) {
 		t.Fatal("an orphaned payload was hidden from recovery and purge")
 	}
 }
+
+func TestBlockedPermanentOperationKeepsExistingRecovery(t *testing.T) {
+	e, _ := testEngine(t)
+	p := resetPlan(t, e)
+	if _, err := e.snapshot(context.Background(), p); err != nil {
+		t.Fatal(err)
+	}
+	p.Request.Permanent = true
+	p.Install.Path = "/synthetic/pi"
+	e.run = processRunner{}
+	if err := e.execute(context.Background(), p, p.ID, nil); err == nil {
+		t.Fatal("running-client blocker was ignored")
+	}
+	backups, err := e.snapshots()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 1 {
+		t.Fatal("blocked operation erased existing recovery before checking running clients")
+	}
+}

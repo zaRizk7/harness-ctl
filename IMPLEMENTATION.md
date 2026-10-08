@@ -34,6 +34,8 @@ dff6aa85dc2644bba4ea71b6c6d421bc7a260f74.
   empty-map preservation, macOS path aliases, OpenCode data-root auth, permanent
   auth erasure and missing recovery indexes. A Prime installer contract mutation
   was detected by its test and reverted.
+- A blocked permanent operation retains existing recovery. Older snapshots are
+  purged only after running-client checks and successful rollback capture.
 - A real pseudo-terminal smoke test passed home/action/recovery navigation and
   keyboard exit. Read-only startup/navigation wrote no manager state.
 - The latest Apple Silicon binary was launched in Terminal. Its live action

@@ -58,11 +58,6 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 	if err = e.expireSnapshots(); err != nil {
 		return err
 	}
-	if p.Request.Permanent {
-		if err = e.purgeAffected(p); err != nil {
-			return err
-		}
-	}
 	record := operationRecord{ID: p.ID, Harness: p.Spec.ID, Action: p.Request.Action, Status: "preparing", Started: time.Now().UTC(), Destination: p.Destination}
 	if err = e.saveRecord(record); err != nil {
 		return err
@@ -129,6 +124,11 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 	record.Status = "executing"
 	if err = e.saveRecord(record); err != nil {
 		return err
+	}
+	if p.Request.Permanent {
+		if err = e.purgeAffected(p, meta.ID); err != nil {
+			return err
+		}
 	}
 	for _, dependency := range p.DependencyCommands {
 		progress(dependency.Description)
@@ -503,13 +503,16 @@ func (e *engine) expireSnapshots() error {
 	}
 	return nil
 }
-func (e *engine) purgeAffected(p *plan) error {
+func (e *engine) purgeAffected(p *plan, except ...string) error {
 	metas, err := e.snapshots()
 	if err != nil {
 		return err
 	}
 	var purge []string
 	for _, display := range metas {
+		if contains(except, display.ID) {
+			continue
+		}
 		meta, err := e.authenticatedSnapshot(display.ID)
 		if err != nil {
 			return err

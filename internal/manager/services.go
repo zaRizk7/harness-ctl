@@ -137,7 +137,11 @@ func (e *engine) checkProcesses(ctx context.Context, p *plan) error {
 			}
 		}
 	}
-	for _, owner := range append(append([]string{}, p.Request.Owners...), p.Spec.SharedClients...) {
+	owners := append([]string{}, p.Request.Owners...)
+	if p.Request.Model == "tracked" || p.Request.Action == "migrate" {
+		owners = append(owners, p.Spec.SharedClients...)
+	}
+	for _, owner := range owners {
 		if owner == "Codex desktop / IDE" {
 			needles = append(needles, "/Codex.app/")
 		}

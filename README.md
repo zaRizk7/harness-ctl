@@ -124,7 +124,10 @@ retains other harness registrations.
 Permanent discard deletes matching older recovery archives. A temporary
 encrypted rollback snapshot exists during execution, then is erased after
 completion or successful rollback. An interrupted operation retains it until
-recovery. This deletes manager copies and native local credentials selected in
+recovery. Existing recovery is retained when a running client blocks an operation
+or rollback capture fails. Once execution begins, permanent removal of older
+archives cannot be undone, including after a later command failure.
+This deletes manager copies and native local credentials selected in
 the preview. It does not revoke remote sessions, remove externally managed
 backups or promise physical secure erasure on APFS/SSD storage.
 
