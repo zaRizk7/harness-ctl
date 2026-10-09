@@ -1,7 +1,8 @@
 # User request ledger
 
 This is the durable acceptance record for the 23 requests beyond the original
-plan. Preserve the codes across implementation, audits and compaction. Read this
+plan and the subsequent public publication request. Preserve the codes across
+implementation, audits and compaction. Read this
 file with [the checkpoint](implementation.md) before continuing work. The latest
 user authorized documenting and resolving gaps after the read-only audit.
 (User, 2026)
@@ -65,7 +66,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D5 | MIT license | Present. |
 | E1 | 100% production coverage and unit/integration testability | Passed the unchanged strict race-enabled gate at exactly 7,255/7,255 production Go statements. Unit, integration and synthetic PTY evidence is recorded below. Coverage does not prove every acceptance condition is correct or cover shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
-| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository created through gh. Existing Go ownership is retained, with CI, draft-release automation, contribution/security guides and versioned Wiki tutorials. Seven Wiki pages plus sidebar are published and verified. Application push/CI evidence follows in the checkpoint. |
+| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Published through gh at zaRizk7/harness-ctl, with main as the default branch. Existing Go ownership is retained, with pinned CI, draft-release automation, contribution/security guides and review templates. Seven Wiki pages plus sidebar are published and match their versioned sources. Publication evidence and per-commit CI links are in the checkpoint. |
 
 (User, 2026; Local workspace, 2026)
 

@@ -24,9 +24,42 @@ macOS architectures built, and 24 Markdown files/local links plus 14 JSON
 examples passed validation. The CI commit passed mandatory formatting, vet,
 race and message hooks. A duplicate standalone quality run was interrupted so
 the mandatory hook run could finish. No check was weakened or bypassed.
-Application push and remote CI verification follow. No binary release version
-has been selected. No live harness/account mutation is authorized for development
-verification. (User, 2026; Local workspace, 2026; GitHub, 2026)
+The normal pre-push hook passed all file checks and the Go quality gate, then
+published the complete existing history and three conventional atomic publication
+commits. GitHub's public `main` initially matched local
+`237b8294d699117bac68a26c38dbe916ecfda09a`. GitHub recognizes the MIT license.
+Publication edits leave production Go, dependencies and installer bytes/modes
+unchanged. The existing exact 7,255/7,255 statement proof remains the source
+baseline. Fresh remote checks run independently on both macOS architectures,
+with exact coverage on Apple Silicon. Consult the
+[per-commit CI results](https://github.com/zaRizk7/harness-ctl/actions/workflows/ci.yml)
+for their status. No binary release version has been selected, and tag-triggered
+draft creation has not been exercised. No live harness/account mutation is
+authorized for development verification. (User, 2026; Local workspace, 2026; GitHub, 2026)
+
+| Code | Publication proof | Result |
+| --- | --- | --- |
+| PV1 | `gh repo view`, commit API, license API | PUBLIC, default `main`, matching published source SHA and MIT recognition |
+| PV2 | `git push -u origin main` | Normal fast-forward publication after all configured pre-push checks. No history rewrite |
+| PV3 | Wiki push, remote SHA, browser and byte comparison | Seven pages plus sidebar at `c44380910de1689d19559c54290012ab23846d07`, matching all eight source files |
+| PV4 | Workflow, document and binary validation | `actionlint` 1.7.12 and YAML hook passed. 24 Markdown files/local links and 14 JSON examples passed. Both versioned macOS architectures built |
+| PV5 | Security-reporting API | Private vulnerability reporting enabled |
+| PV6 | Fresh local `make check` after publication | Formatting, vet and complete race suite passed. Manager package: 413.092 seconds |
+| PV7 | First source-push Apple Silicon CI | Completed successfully. Exact 7,255/7,255 production statements, versioned build and artifact upload. [Job evidence](https://github.com/zaRizk7/harness-ctl/actions/runs/37890195915/job/113689156688) |
+| PV8 | First complete source-push CI | Both Apple Silicon and Intel quality/race checks, versioned binaries and artifact uploads passed. [Run evidence](https://github.com/zaRizk7/harness-ctl/actions/runs/37890195915). Later workflow/doc commits have their own per-commit results |
+
+(Local workspace, 2026; GitHub, 2026)
+
+The first run warned that the pinned artifact action targeted deprecated Node 20.
+Its official v7.0.2 action contract uses Node 24 and retains the archive, name,
+path and retention inputs needed here. CI now pins its verified commit
+`cf430e030ddbb5b0abf93d22962f4752f3646cd9`. Subsequent run results are linked above.
+GitHub also reports macOS ARM runner capacity delays, which do not change the
+tests or release scope. (GitHub, 2026; Local workspace, 2026)
+
+The publication series uses conventional atomic commits with empty bodies and
+no co-author trailers. Every commit and source push passes the configured hooks.
+The Wiki keeps its native separate Git history. (Local workspace, 2026)
 
 ## Current fix checkpoint, 2026-10-09
 
