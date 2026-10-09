@@ -1,0 +1,230 @@
+[
+  {
+    "name": "Codex CLI",
+    "command": "codex",
+    "package": "@openai/codex",
+    "brew_packages": [
+      "codex"
+    ],
+    "default_home": ".codex",
+    "kind": "npm",
+    "docs": "https://learn.chatgpt.com/docs/codex/cli",
+    "config_files": [
+      "config.toml"
+    ],
+    "shared_clients": [
+      "Codex desktop / IDE"
+    ],
+    "id": "codex",
+    "home_env": "CODEX_HOME",
+    "launch_rules": [
+      {
+        "args": [
+          "--sandbox",
+          "workspace-write"
+        ],
+        "flags": [
+          "--sandbox",
+          "-s",
+          "--full-auto",
+          "--yolo",
+          "--dangerously-bypass-approvals-and-sandbox"
+        ],
+        "config_keys": [
+          "sandbox_mode"
+        ]
+      },
+      {
+        "args": [
+          "--ask-for-approval",
+          "on-request"
+        ],
+        "flags": [
+          "--ask-for-approval",
+          "-a",
+          "--full-auto",
+          "--yolo",
+          "--dangerously-bypass-approvals-and-sandbox"
+        ],
+        "config_keys": [
+          "approval_policy"
+        ]
+      },
+      {
+        "args": [
+          "--config",
+          "approvals_reviewer=\"auto_review\""
+        ],
+        "flags": [
+          "--full-auto",
+          "--yolo",
+          "--dangerously-bypass-approvals-and-sandbox"
+        ],
+        "config_keys": [
+          "approvals_reviewer"
+        ]
+      }
+    ],
+    "config_flags": [
+      "--config",
+      "-c"
+    ]
+  },
+  {
+    "name": "Claude Code",
+    "command": "claude",
+    "package": "@anthropic-ai/claude-code",
+    "brew_packages": [
+      "claude-code"
+    ],
+    "default_home": ".claude",
+    "kind": "npm",
+    "docs": "https://code.claude.com/docs/en/setup",
+    "config_files": [
+      "settings.json",
+      "settings.local.json"
+    ],
+    "shared_clients": [
+      "Claude desktop / IDE"
+    ],
+    "id": "claude",
+    "home_env": "CLAUDE_CONFIG_DIR",
+    "launch_rules": [
+      {
+        "args": [
+          "--permission-mode",
+          "auto"
+        ],
+        "flags": [
+          "--permission-mode",
+          "--dangerously-skip-permissions"
+        ]
+      }
+    ],
+    "launch_note": "Claude auto mode depends on the installed version, supported model and provider/organization policy. Native checks may retain manual approval when unavailable. Use launch --native for the native starting policy."
+  },
+  {
+    "name": "Gemini CLI",
+    "command": "gemini",
+    "package": "@google/gemini-cli",
+    "brew_packages": [
+      "gemini-cli"
+    ],
+    "default_home": ".gemini",
+    "kind": "npm",
+    "docs": "https://geminicli.com/docs/get-started/installation/",
+    "config_files": [
+      "settings.json"
+    ],
+    "id": "gemini",
+    "launch_rules": [
+      {
+        "args": [
+          "--approval-mode",
+          "auto_edit"
+        ],
+        "flags": [
+          "--approval-mode",
+          "--yolo",
+          "-y"
+        ]
+      }
+    ],
+    "launch_note": "Gemini auto_edit approves edit tools and retains prompts for other tools. Sandboxing follows native configuration. No unrestricted approval mode is added."
+  },
+  {
+    "name": "OpenCode",
+    "command": "opencode",
+    "package": "opencode-ai",
+    "brew_packages": [
+      "opencode"
+    ],
+    "default_home": ".config/opencode",
+    "kind": "npm",
+    "docs": "https://opencode.ai/docs/",
+    "config_files": [
+      "opencode.json",
+      "opencode.jsonc"
+    ],
+    "id": "opencode",
+    "home_env": "",
+    "launch_args": [],
+    "approval_flags": [
+      "--auto"
+    ],
+    "launch_note": "OpenCode uses its native permission rules. Its --auto flag approves permissions not explicitly denied and is not a verified secure automatic policy. Configure native allow/ask/deny rules as needed."
+  },
+  {
+    "name": "Pi",
+    "command": "pi",
+    "package": "@earendil-works/pi-coding-agent",
+    "legacy_packages": [
+      "@mariozechner/pi-coding-agent"
+    ],
+    "default_home": ".pi/agent",
+    "kind": "npm",
+    "docs": "https://github.com/earendil-works/pi",
+    "config_files": [
+      "settings.json"
+    ],
+    "id": "pi",
+    "home_env": "PI_CODING_AGENT_DIR",
+    "launch_note": "Pi uses its native approval policy. Extension-defined policies remain native."
+  },
+  {
+    "name": "Hermes Agent",
+    "command": "hermes",
+    "default_home": ".hermes",
+    "kind": "hermes",
+    "docs": "https://hermes-agent.nousresearch.com/docs/getting-started/installation",
+    "config_files": [
+      "config.yaml"
+    ],
+    "launch_labels": [
+      "ai.hermes.gateway",
+      "com.hermes.agent"
+    ],
+    "id": "hermes",
+    "home_env": "HERMES_HOME",
+    "launch_args": [],
+    "approval_flags": [
+      "--yolo"
+    ],
+    "launch_note": "Hermes uses its native approval policy. No secure automatic approval launch contract is verified."
+  },
+  {
+    "name": "OpenClaw",
+    "command": "openclaw",
+    "package": "openclaw",
+    "default_home": ".openclaw",
+    "kind": "npm",
+    "docs": "https://docs.openclaw.ai/cli/reset",
+    "config_files": [
+      "openclaw.json"
+    ],
+    "launch_labels": [
+      "ai.openclaw.gateway"
+    ],
+    "id": "openclaw",
+    "home_env": "OPENCLAW_STATE_DIR",
+    "launch_args": [
+      "tui"
+    ],
+    "launch_note": "OpenClaw TUI uses its native tool approval policy. No secure automatic approval launch flag is verified."
+  },
+  {
+    "name": "Prime Agent",
+    "command": "prime-agent",
+    "default_home": ".prime/agent",
+    "kind": "prime",
+    "docs": "https://github.com/PrimeIntellect-ai/prime-agent",
+    "config_files": [
+      "settings.json",
+      "config.json",
+      "config.toml"
+    ],
+    "id": "prime-agent",
+    "home_env": "PRIME_AGENT_CODING_AGENT_DIR",
+    "launch_note": "Prime Agent uses its native execution policy. The manager does not add unrestricted approval bypass flags."
+  }
+]
