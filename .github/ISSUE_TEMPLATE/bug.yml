@@ -1,0 +1,23 @@
+name: Bug report
+description: Report a reproducible problem without sharing credentials or state contents
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Output of harness-ctl version, macOS version and CPU architecture
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include the command or TUI steps, expected result and actual result. Redact paths and identifiers as needed. Never attach secrets, vaults, recovery archives or private configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Affected scope
+      description: Harness version, installation method, selected operation and preservation choices. A minimal synthetic fixture is preferable to real user state.

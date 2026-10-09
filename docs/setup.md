@@ -5,19 +5,48 @@ executable payloads separate from editable configuration, needs no administrator
 access and makes removal explicit. A direct binary directory is also supported.
 Shell startup changes require an explicit `--shell-file` path and approval. (Local workspace, 2026)
 
-The release destination will be supplied when publication is authorized. Until
-then, the installer requires an explicit HTTPS binary URL and publisher SHA-256.
+The authorized destination is [zaRizk7/harness-ctl](https://github.com/zaRizk7/harness-ctl).
+No binary release has been published yet. Build from source today, or use the
+bootstrap after an approved release supplies assets and checksums. The installer
+requires an explicit HTTPS binary URL and publisher SHA-256.
 Download the installer to a file, inspect it, then run it. The installer verifies
 the binary before executing its setup interface. Obtain the checksum through a
-trusted publisher channel. (User decisions, 2026; Local workspace, 2026)
+trusted publisher channel. Pin a reviewed commit for the installer URL when
+reproducibility is needed. (User decisions, 2026; Local workspace, 2026)
 
 ```sh
-curl --fail --proto '=https' --tlsv1.2 -o install.sh INSTALLER_HTTPS_URL
+curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
+  -o install.sh https://raw.githubusercontent.com/zaRizk7/harness-ctl/main/scripts/install.sh
 # Inspect install.sh before running it.
 bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256
 bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --headless --yes
 bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --direct
 ```
+
+The binary URL convention after a release is
+`https://github.com/zaRizk7/harness-ctl/releases/download/TAG/harness-ctl-darwin-ARCH`,
+with `ARCH` equal to `arm64` or `amd64` and an approved version tag. Obtain the
+matching entry from that release's `SHA256SUMS` through a trusted publisher
+channel. These are conventions for future releases, not currently downloadable
+assets. (Local workspace, 2026)
+
+## Source installation
+
+```sh
+git clone https://github.com/zaRizk7/harness-ctl.git
+cd harness-ctl
+GOTOOLCHAIN=local make build
+binary_sha256="$(shasum -a 256 ./bin/harness-ctl | awk '{print $1}')"
+./bin/harness-ctl setup --binary "$PWD/bin/harness-ctl" \
+  --sha256 "$binary_sha256" --link-dir "$HOME/.local/bin" --preview
+./bin/harness-ctl setup --binary "$PWD/bin/harness-ctl" \
+  --sha256 "$binary_sha256" --link-dir "$HOME/.local/bin"
+```
+
+The checksum binds setup to your local build, rather than proving independent
+publisher authenticity. `setup` without `--binary` initializes configuration
+and optional PATH only. Supply a binary and checksum to install its payload.
+(Local workspace, 2026)
 
 The setup TUI displays the executable prefix and symlink choice. Space switches
 between direct and symlink installation, Enter builds a concrete preview, and

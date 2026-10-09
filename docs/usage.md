@@ -80,7 +80,8 @@ their native installers and permissions.
 
 The manager creates shims under its configured `bin_dir`. To use one explicitly,
 run the absolute shim path shown by `config`, or add that directory to PATH
-yourself. The manager does not edit shell startup files.
+yourself. Explicit `setup --shell-file ABSOLUTE_FILE` can preview and approve
+a confined POSIX PATH append. It does not change the current shell. (Local workspace, 2026)
 
 | Harness | Managed user-state convention |
 | --- | --- |

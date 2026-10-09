@@ -7,6 +7,27 @@ and the user's authorization to resolve its gaps. Current verification and open
 items are recorded below.
 (User, 2026; Local workspace, 2026)
 
+## Publication checkpoint, 2026-10-09
+
+The user authorized `gh` publication of the public repository
+`zaRizk7/harness-ctl`, a quality Go application structure and Wiki tutorials.
+This supersedes every historical deferred-publication instruction below.
+The existing `cmd`/`internal` ownership remains. CI, tag-triggered draft-release
+automation, contribution/security guides, review templates and operator Wiki
+sources are implemented. Wiki sources are versioned under `docs/wiki` and published
+separately. Source setup and the authorized bootstrap URL are documented.
+The public repository is created, `origin` is configured, Wiki/private security
+reporting are enabled, and the Wiki's seven pages plus sidebar are published at
+`c44380910de1689d19559c54290012ab23846d07`. The browser verified its navigation.
+`actionlint` 1.7.12 passed both workflows, the YAML hook passed, both versioned
+macOS architectures built, and 24 Markdown files/local links plus 14 JSON
+examples passed validation. The CI commit passed mandatory formatting, vet,
+race and message hooks. A duplicate standalone quality run was interrupted so
+the mandatory hook run could finish. No check was weakened or bypassed.
+Application push and remote CI verification follow. No binary release version
+has been selected. No live harness/account mutation is authorized for development
+verification. (User, 2026; Local workspace, 2026; GitHub, 2026)
+
 ## Current fix checkpoint, 2026-10-09
 
 The request ledger and [remaining boundaries](limitations.md) are authoritative
@@ -30,8 +51,8 @@ All 197 versioned files matched the saved source/documentation snapshot before
 this checkpoint update. Source bytes and modes remain unchanged.
 The ledger still marks C3 and A1 partial and limits C4 to its verified native
 adapter. Remaining project work and vendor constraints are separate entries in
-the limitations guide. No publication or live harness/account mutations are
-authorized for verification.
+the limitations guide. Live harness/account mutations remain excluded from
+development verification. Repository/Wiki publication is separately authorized.
 (User, 2026; Local workspace, 2026)
 
 | Code | Current verification | Result |
@@ -180,8 +201,8 @@ Publication remains deferred.
   automatic contract is not verified. No unrestricted bypass flag by default.
 - D4: The umbrella is a reusable library with approved application to selected
   harnesses. It does not silently propagate edits into applied copies.
-- D5: Release publication and its destination are deferred. Installer URL and
-  publisher checksum are explicit until the user authorizes publication.
+- D5: Repository/Wiki publication is authorized at `zaRizk7/harness-ctl`. Binary
+  assets await a selected release version. Installer URL/checksum remain explicit.
 
 (User decisions, 2026)
 
@@ -237,9 +258,9 @@ Publication remains deferred.
   export costs are implemented. Other consumer numeric adapters remain unverified
   project work. Invoices and paid plan changes use account pages. A five-second
   local refresh does not guarantee fresh upstream data. See `docs/accounts.md`.
-- Release publication and its destination remain deferred. Setup supports an
-  explicit HTTPS binary URL and trusted publisher checksum until publication
-  is authorized. See `docs/setup.md`.
+- No binary release version has been selected or published. Source setup and
+  the authorized bootstrap destination are documented. Setup requires an explicit
+  HTTPS binary URL and trusted publisher checksum. See `docs/setup.md`.
 - Managed update/reinstall requires removing owned LaunchAgent registrations
   separately. Tracked Hermes update/reinstall requires its native updater or
   migration to a managed installation. These combinations do not execute.
