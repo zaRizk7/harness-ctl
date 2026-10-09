@@ -8,10 +8,12 @@ import (
 	"strings"
 )
 
+// validateRegistry checks reg's managed installations, profile paths and
+// identities before accepting ownership. It never writes reg.
 func (e *engine) validateRegistry(reg registry) error {
 	seen := map[string]bool{}
 	for _, inst := range reg.Installs {
-		s, err := specFor(inst.Harness)
+		s, err := e.specFor(inst.Harness)
 		if err != nil {
 			return err
 		}
@@ -48,6 +50,8 @@ func (e *engine) validateRegistry(reg registry) error {
 	return nil
 }
 
+// refreshRegistry loads and validates current persisted ownership. Missing
+// storage uses an empty registry, invalid storage returns an error.
 func (e *engine) refreshRegistry() error {
 	if err := validateOwnedPath(e.cfg.Root, e.statePath); err != nil {
 		return err
@@ -66,6 +70,8 @@ func (e *engine) refreshRegistry() error {
 	return nil
 }
 
+// knownCategory reports whether cat belongs to the supported state category
+// protocol.
 func knownCategory(cat category) bool {
 	for _, c := range categories {
 		if c == cat {
@@ -75,8 +81,12 @@ func knownCategory(cat category) bool {
 	return false
 }
 
+// shellQuote returns value as one POSIX shell argument, preserving embedded
+// quotes without evaluation.
 func shellQuote(value string) string { return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'" }
 
+// sortedKeys returns m's keys in lexical order for deterministic encoding,
+// commands and previews.
 func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
@@ -86,8 +96,10 @@ func sortedKeys[V any](m map[string]V) []string {
 	return keys
 }
 
+// launchEnvironment returns native state/runtime environment overrides for inst
+// and root. It never reads credential values.
 func (e *engine) launchEnvironment(inst installation, root string) map[string]string {
-	s, _ := specFor(inst.Harness)
+	s, _ := e.specFor(inst.Harness)
 	env := map[string]string{"GOTOOLCHAIN": "local", "DISABLE_AUTOUPDATER": "1"}
 	if s.HomeEnv != "" {
 		env[s.HomeEnv] = root
@@ -96,11 +108,12 @@ func (e *engine) launchEnvironment(inst installation, root string) map[string]st
 		env["HOME"] = filepath.Dir(root)
 	}
 	if s.ID == "opencode" {
-		base := filepath.Dir(filepath.Dir(filepath.Dir(root)))
-		env["XDG_CONFIG_HOME"] = filepath.Join(base, "xdg", "config")
-		env["XDG_DATA_HOME"] = filepath.Join(base, "xdg", "data")
-		env["XDG_STATE_HOME"] = filepath.Join(base, "xdg", "state")
-		env["XDG_CACHE_HOME"] = filepath.Join(base, "xdg", "cache")
+		state := *e
+		state.cfg.StateRoots = map[string]string{s.ID: root}
+		roots := state.rootsFor(s)
+		for i, key := range []string{"XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME"} {
+			env[key] = filepath.Dir(roots[i])
+		}
 	}
 	if s.ID == "hermes" {
 		env["HERMES_RUNTIME_DIR"] = filepath.Join(inst.Root, "runtime")
@@ -109,11 +122,13 @@ func (e *engine) launchEnvironment(inst installation, root string) map[string]st
 	return env
 }
 
+// writeShim publishes inst's scoped direct launcher. Registered ownership is
+// required and foreign existing commands are rejected.
 func (e *engine) writeShim(inst installation) error {
 	if err := e.validateRegistry(registry{Installs: []installation{inst}}); err != nil {
 		return err
 	}
-	s, _ := specFor(inst.Harness)
+	s, _ := e.specFor(inst.Harness)
 	root := inst.StateRoot
 	prof, hasProfile := e.reg.Profiles[inst.ID]
 	if hasProfile {
@@ -121,13 +136,13 @@ func (e *engine) writeShim(inst installation) error {
 	}
 	// Gemini uses homedir() rather than a verified native home override.
 	// Give only shim launches a private HOME with the expected .gemini child.
-	if err := os.MkdirAll(root, 0700); err != nil {
+	if err := fileIO.mkdir(root, 0700); err != nil {
 		return err
 	}
 	if s.ID == "opencode" {
 		base := filepath.Dir(filepath.Dir(filepath.Dir(root)))
 		for _, path := range []string{"config/opencode", "data/opencode", "state/opencode", "cache/opencode"} {
-			if err := os.MkdirAll(filepath.Join(base, "xdg", path), 0700); err != nil {
+			if err := fileIO.mkdir(filepath.Join(base, "xdg", path), 0700); err != nil {
 				return err
 			}
 		}
@@ -135,7 +150,7 @@ func (e *engine) writeShim(inst installation) error {
 	env := e.launchEnvironment(inst, root)
 	if hasProfile {
 		home := filepath.Join(prof.Root, "home")
-		if err := os.MkdirAll(home, 0700); err != nil {
+		if err := fileIO.mkdir(home, 0700); err != nil {
 			return err
 		}
 		env["HOME"] = home
@@ -154,12 +169,13 @@ func (e *engine) writeShim(inst installation) error {
 	for _, key := range sortedKeys(env) {
 		fmt.Fprintf(&body, "export %s=%s\n", key, shellQuote(env[key]))
 	}
+	body.WriteString(launchPolicy(s).Shell(s.LaunchNote))
 	fmt.Fprintf(&body, "exec %s \"$@\"\n", shellQuote(inst.Path))
 	path := filepath.Join(e.cfg.BinDir, s.Command)
 	if err := validateOwnedPath(e.cfg.Root, path); err != nil {
 		return err
 	}
-	if data, err := os.ReadFile(path); err == nil && !strings.Contains(string(data), "Generated by harness-ctl.") {
+	if data, err := fileIO.readFile(path); err == nil && !strings.Contains(string(data), "Generated by harness-ctl.") {
 		return fmt.Errorf("refusing to replace a foreign command: %s", path)
 	} else if err != nil && !os.IsNotExist(err) {
 		return err
@@ -167,13 +183,15 @@ func (e *engine) writeShim(inst installation) error {
 	return atomicWrite(path, []byte(body.String()), 0700)
 }
 
+// removeShim removes only the generated launcher that still refers to inst. A
+// foreign or retargeted launcher is retained.
 func (e *engine) removeShim(inst installation) error {
-	s, _ := specFor(inst.Harness)
+	s, _ := e.specFor(inst.Harness)
 	path := filepath.Join(e.cfg.BinDir, s.Command)
 	if err := validateOwnedPath(e.cfg.Root, path); err != nil {
 		return err
 	}
-	data, err := os.ReadFile(path)
+	data, err := fileIO.readFile(path)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -183,5 +201,5 @@ func (e *engine) removeShim(inst installation) error {
 	if !strings.Contains(string(data), "Generated by harness-ctl.") || !strings.Contains(string(data), shellQuote(inst.Path)) {
 		return nil
 	}
-	return os.Remove(path)
+	return fileIO.remove(path)
 }

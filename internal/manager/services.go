@@ -12,12 +12,15 @@ import (
 	"strings"
 )
 
+// plistElement retains the minimal XML tree needed to validate service ownership.
 type plistElement struct {
 	XMLName xml.Name
 	Text    string         `xml:",chardata"`
 	Values  []plistElement `xml:",any"`
 }
 
+// serviceProgram returns the uniquely declared launch executable from data.
+// Ambiguous or malformed plist structure is rejected.
 func serviceProgram(data []byte, label string) (string, error) {
 	decoder := xml.NewDecoder(bytes.NewReader(data))
 	var doc plistElement
@@ -84,8 +87,10 @@ func serviceProgram(data []byte, label string) (string, error) {
 	return args.Values[0].Text, nil
 }
 
+// validateService checks that path's LaunchAgent label and executable belong to
+// inst. It rejects foreign, linked or ambiguous services.
 func (e *engine) validateService(inst installation, path string) error {
-	s, err := specFor(inst.Harness)
+	s, err := e.specFor(inst.Harness)
 	if err != nil {
 		return err
 	}
@@ -96,7 +101,7 @@ func (e *engine) validateService(inst installation, path string) error {
 	if err = validateOwnedPath(filepath.Dir(path), path); err != nil {
 		return err
 	}
-	f, err := os.Open(path)
+	f, err := fileIO.open(path)
 	if err != nil {
 		return err
 	}
@@ -118,6 +123,8 @@ func (e *engine) validateService(inst installation, path string) error {
 	return nil
 }
 
+// stopServices unloads inst's owned running services using ctx and journals
+// each stopped path in record before later mutation.
 func (e *engine) stopServices(ctx context.Context, inst installation, record *operationRecord) error {
 	for _, path := range inst.ServicePaths {
 		if err := e.validateService(inst, path); err != nil {
@@ -143,6 +150,8 @@ func (e *engine) stopServices(ctx context.Context, inst installation, record *op
 	return nil
 }
 
+// restartServices reloads the recorded paths using ctx after validating each
+// service. It returns native coordination failures.
 func (e *engine) restartServices(ctx context.Context, paths []string) error {
 	for _, path := range paths {
 		// Interrupted-operation journals are editable. Re-establish service
@@ -177,6 +186,8 @@ func (e *engine) restartServices(ctx context.Context, paths []string) error {
 	return nil
 }
 
+// checkProcesses returns an error when a harness or affected client is still
+// running for p. Process inspection uses ctx and never stops foreign clients.
 func (e *engine) checkProcesses(ctx context.Context, p *plan) error {
 	out, err := e.run.Run(ctx, command{Path: "/bin/ps", Args: []string{"-axo", "pid=,command="}, Description: "Check affected running clients"})
 	if err != nil {

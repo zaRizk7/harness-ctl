@@ -14,6 +14,8 @@ import (
 
 var targetPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
 
+// buildPlan returns a read-only plan for req using ctx. It resolves ownership,
+// resources and native recipes before exposing approval controls.
 func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	if req.Action == "manage" {
 		if req.Permanent || req.RemoveOld {
@@ -35,14 +37,11 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	}
 	req.Disabled = cloneCategories(req.Disabled)
 	req.Owners = append([]string{}, req.Owners...)
-	s, err := specFor(req.Harness)
+	s, err := e.specFor(req.Harness)
 	if err != nil {
 		return nil, err
 	}
 	p := &plan{ID: randomID(), Created: time.Now().UTC(), Request: req, Spec: s}
-	if req.Preserve == nil {
-		p.Request.Preserve = keepAll()
-	}
 	switch req.Action {
 	case "install", "uninstall", "reinstall", "reset", "update", "migrate", "profile", "manage":
 	default:
@@ -68,7 +67,8 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 			if req.Action != "manage" || req.InstallID != "" {
 				return nil, fmt.Errorf("selected installation no longer exists")
 			}
-			p.Install = installation{Harness: s.ID, Method: "state-only"}
+			p.Install = e.retainedInstallation(s.ID)
+			p.Install.Method = "state-only"
 		}
 		if p.Install.Method == "unknown" && req.Action != "reset" && req.Action != "manage" {
 			p.Blockers = append(p.Blockers, "Installation ownership is unverified. Choose an independently verified managed installation.")
@@ -247,6 +247,8 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	return p, nil
 }
 
+// installRecipe adds verified installation steps and payload metadata to p.
+// Target/package/ownership failures return errors before execution.
 func (e *engine) installRecipe(ctx context.Context, p *plan) error {
 	target := p.Request.Target
 	if p.Request.Action == "reinstall" && target == "" && p.Install.Method != "brew" {
@@ -343,6 +345,8 @@ func (e *engine) installRecipe(ctx context.Context, p *plan) error {
 	return e.nativeRecipe(ctx, p, target)
 }
 
+// requireBrewDependency adds a native prerequisite install for pkg to p,
+// retaining externally owned dependencies after harness removal.
 func (e *engine) requireBrewDependency(p *plan, pkg string) error {
 	brew, err := lookPath("brew")
 	if err != nil {
@@ -353,6 +357,8 @@ func (e *engine) requireBrewDependency(p *plan, pkg string) error {
 	return nil
 }
 
+// nativeRecipe adds adapter-specific installer steps for p and target using
+// ctx. It pins the public payload and scopes installer HOME.
 func (e *engine) nativeRecipe(ctx context.Context, p *plan, target string) error {
 	s := p.Spec
 	p.Request.Target = target
@@ -471,16 +477,14 @@ func (e *engine) nativeRecipe(ctx context.Context, p *plan, target string) error
 			p.Steps = append(p.Steps, command{Path: "bash", Args: stageArgs, Env: env, Description: "Hermes native " + stage + " stage"})
 		}
 	} else {
-		shell := "sh"
-		if s.ID == "hermes" {
-			shell = "bash"
-		}
-		p.Steps = append(p.Steps, command{Path: shell, Args: append([]string{p.Artifact}, args...), Env: env, Description: "Run reviewed native installer"})
+		p.Steps = append(p.Steps, command{Path: "sh", Args: append([]string{p.Artifact}, args...), Env: env, Description: "Run reviewed native installer"})
 	}
 	p.Warnings = append(p.Warnings, "Native installer payload is pinned to the previewed digest. Its own runtime acquisition remains native to the harness.")
 	return nil
 }
 
+// uninstallRecipe adds native uninstall steps for inst to p. Unknown package or
+// launcher ownership cannot produce a removal recipe.
 func (e *engine) uninstallRecipe(p *plan, inst installation) error {
 	if inst.Managed {
 		return nil
@@ -513,6 +517,8 @@ func (e *engine) uninstallRecipe(p *plan, inst installation) error {
 	return nil
 }
 
+// validatePlan returns an error if p is blocked or any registry, executable,
+// resource or component fingerprint changed after preview.
 func (e *engine) validatePlan(p *plan) error {
 	if p.Component != nil && p.Component.Digest != componentPlanDigest(p) {
 		return fmt.Errorf("component preview changed. Create a new preview")

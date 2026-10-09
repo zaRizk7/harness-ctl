@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"github.com/zaRizk7/harness-ctl/internal/stateconfig"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestNativeComponentFieldsAreClassified(t *testing.T) {
 	for field, want := range map[string]category{"apps": connectors, "plugin": plugins, "disabledSkills": skills, "mcp_servers": mcp} {
-		if got := fieldCategory(field); got != want {
+		if got := stateconfig.FieldCategory(field); got != want {
 			t.Errorf("%s category = %s, want %s", field, got, want)
 		}
 	}
@@ -109,7 +110,7 @@ func TestNestedSettingsPreserveAuthentication(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fields := classifyFields(value)
+	fields := stateconfig.ClassifyFields(value)
 	keep := keepAll()
 	keep[settings] = false
 	keep[mcp] = false
@@ -143,7 +144,7 @@ func TestSelectiveResetKeepsPreservedEmptyMaps(t *testing.T) {
 	}
 	keep := keepAll()
 	keep[hooks] = false
-	r := resource{Path: path, Root: root, Owners: []string{"pi"}, Format: "json", Fields: classifyFields(value)}
+	r := resource{Path: path, Root: root, Owners: []string{"pi"}, Format: "json", Fields: stateconfig.ClassifyFields(value)}
 	if err = applyState(r, request{Harness: "pi", Preserve: keep}); err != nil {
 		t.Fatal(err)
 	}

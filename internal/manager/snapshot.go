@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -24,22 +23,39 @@ import (
 
 const keychainService = "harness-ctl.snapshot-key"
 
+// keyStore persists the manager encryption identity at the native credential
+// boundary. Tests substitute in-memory identities without touching OS secrets.
 type keyStore interface {
 	Get(string) (string, error)
 	Set(string, string) error
 }
-type keychainStore struct{}
 
-// Get reads the manager storage identity from the native credential store.
-func (keychainStore) Get(account string) (string, error) {
-	return keyring.Get(keychainService, account)
+// keychainStore binds platform credential operations for the manager identity.
+type keychainStore struct {
+	get    func(string, string) (string, error)
+	set    func(string, string, string) error
+	remove func(string, string) error
 }
 
-// Set persists the recovery identity before any encrypted snapshot is published.
-func (keychainStore) Set(account, value string) error {
-	return keyring.Set(keychainService, account, value)
+// newKeychainStore binds native credential operations at the platform boundary.
+func newKeychainStore() keychainStore {
+	return keychainStore{get: keyring.Get, set: keyring.Set, remove: keyring.Delete}
 }
 
+// Get returns the stored identity for account in the manager keychain service,
+// or the native lookup error. It does not create an identity.
+func (k keychainStore) Get(account string) (string, error) {
+	return k.get(keychainService, account)
+}
+
+// Set stores value for account in the manager keychain service and returns the
+// native write error. Callers persist the identity before publishing ciphertext.
+func (k keychainStore) Set(account, value string) error {
+	return k.set(keychainService, account, value)
+}
+
+// snapshotItem describes one captured or absent path and its restoration
+// ownership. Metadata is authenticated before restoring any archive member.
 type snapshotItem struct {
 	Path       string     `json:"path"`
 	Root       string     `json:"root"`
@@ -49,6 +65,9 @@ type snapshotItem struct {
 	Launcher   bool       `json:"launcher,omitempty"`
 	Owners     []string   `json:"owners,omitempty"`
 }
+
+// snapshotMeta indexes an encrypted recovery archive, its retention and
+// the registry/install coordinates needed to validate restoration.
 type snapshotMeta struct {
 	ID       string         `json:"id"`
 	Harness  string         `json:"harness"`
@@ -60,14 +79,18 @@ type snapshotMeta struct {
 	Install  installation   `json:"installation"`
 }
 
+// randomID returns a cryptographically random operation identity. Entropy
+// failures terminate rather than weakening identity safety.
 func randomID() string {
 	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := archiveIO.entropy(b[:]); err != nil {
 		panic(err)
 	}
 	return hex.EncodeToString(b[:])
 }
 
+// identity returns the manager root's encryption identity. create permits
+// generating and persisting one when absent, otherwise errors are returned.
 func (e *engine) identity(create bool) (*age.X25519Identity, error) {
 	account := installID("storage", e.cfg.Root)
 	secret, err := e.keys.Get(account)
@@ -75,7 +98,7 @@ func (e *engine) identity(create bool) (*age.X25519Identity, error) {
 		if !errors.Is(err, keyring.ErrNotFound) || !create {
 			return nil, fmt.Errorf("snapshot key unavailable in macOS Keychain: %w", err)
 		}
-		id, err := age.GenerateX25519Identity()
+		id, err := archiveIO.generate()
 		if err != nil {
 			return nil, err
 		}
@@ -87,6 +110,8 @@ func (e *engine) identity(create bool) (*age.X25519Identity, error) {
 	return age.ParseX25519Identity(secret)
 }
 
+// snapshot returns authenticated metadata after encrypting p's rollback
+// resources with ctx. No plaintext recovery payload is published.
 func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	meta := snapshotMeta{ID: randomID(), Harness: p.Spec.ID, Action: p.Request.Action, Created: time.Now().UTC(), Registry: e.reg, Install: p.Install}
 	meta.Expires = meta.Created.Add(time.Duration(e.cfg.BackupDays) * 24 * time.Hour)
@@ -150,7 +175,7 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	}
 	meta.Items = dedupeItems(meta.Items)
 	for i := range meta.Items {
-		info, err := os.Lstat(meta.Items[i].Path)
+		info, err := fileIO.lstat(meta.Items[i].Path)
 		if err == nil {
 			meta.Items[i].Directory = info.IsDir()
 		} else if os.IsNotExist(err) {
@@ -167,77 +192,77 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	if err = validateOwnedPath(e.cfg.Root, dir); err != nil {
 		return meta, err
 	}
-	if err = os.MkdirAll(dir, 0700); err != nil {
+	if err = fileIO.mkdir(dir, 0700); err != nil {
 		return meta, err
 	}
-	f, err := os.CreateTemp(dir, ".snapshot-*")
+	f, err := fileIO.create(dir, ".snapshot-*")
 	if err != nil {
 		return meta, err
 	}
-	defer os.Remove(f.Name())
-	if err = f.Chmod(0600); err != nil {
-		f.Close()
+	defer fileIO.remove(f.Name())
+	if err = fileIO.chmod(f, 0600); err != nil {
+		fileIO.close(f)
 		return meta, err
 	}
-	encrypted, err := age.Encrypt(f, identity.Recipient())
+	encrypted, err := archiveIO.encrypt(f, identity.Recipient())
 	if err != nil {
-		f.Close()
+		fileIO.close(f)
 		return meta, err
 	}
 	archive := tar.NewWriter(encrypted)
 	var total int64
-	manifest, err := json.Marshal(meta)
+	manifest, err := marshalJSON(meta)
 	if err != nil {
-		archive.Close()
-		encrypted.Close()
-		f.Close()
+		archiveIO.tarClose(archive)
+		archiveIO.cipherClose(encrypted)
+		fileIO.close(f)
 		return meta, err
 	}
-	if err = archive.WriteHeader(&tar.Header{Name: "manifest.json", Mode: 0600, Size: int64(len(manifest))}); err == nil {
-		_, err = archive.Write(manifest)
+	if err = archiveIO.tarHeader(archive, &tar.Header{Name: "manifest.json", Mode: 0600, Size: int64(len(manifest))}); err == nil {
+		_, err = archiveIO.tarWrite(archive, manifest)
 	}
 	if err != nil {
-		archive.Close()
-		encrypted.Close()
-		f.Close()
+		archiveIO.tarClose(archive)
+		archiveIO.cipherClose(encrypted)
+		fileIO.close(f)
 		return meta, err
 	}
 	for i := range meta.Items {
 		item := &meta.Items[i]
-		info, err := os.Lstat(item.Path)
+		info, err := fileIO.lstat(item.Path)
 		if os.IsNotExist(err) {
 			continue
 		}
 		if err != nil {
-			archive.Close()
-			encrypted.Close()
-			f.Close()
+			archiveIO.tarClose(archive)
+			archiveIO.cipherClose(encrypted)
+			fileIO.close(f)
 			return meta, err
 		}
 		item.Directory = info.IsDir()
-		err = filepath.WalkDir(item.Path, func(path string, d fs.DirEntry, err error) error {
+		err = fileIO.walk(item.Path, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			info, err := d.Info()
+			info, err := fileIO.info(d)
 			if err != nil {
 				return err
 			}
-			rel, err := filepath.Rel(item.Path, path)
+			rel, err := fileIO.rel(item.Path, path)
 			if err != nil {
 				return err
 			}
 			var link string
 			if info.Mode()&os.ModeSymlink != 0 {
-				link, err = os.Readlink(path)
+				link, err = fileIO.readlink(path)
 				if err != nil {
 					return err
 				}
 			}
-			header, err := tar.FileInfoHeader(info, link)
+			header, err := archiveIO.header(info, link)
 			if err != nil {
 				return err
 			}
@@ -245,7 +270,7 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 			if !info.Mode().IsRegular() && !info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
 				return fmt.Errorf("unsupported state resource type: %s", path)
 			}
-			if err = archive.WriteHeader(header); err != nil {
+			if err = archiveIO.tarHeader(archive, header); err != nil {
 				return err
 			}
 			if info.Mode().IsRegular() {
@@ -253,12 +278,12 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 				if total > e.cfg.MaxSnapshotBytes {
 					return fmt.Errorf("snapshot exceeds configured size limit")
 				}
-				f, err := os.Open(path)
+				f, err := fileIO.open(path)
 				if err != nil {
 					return err
 				}
-				_, err = io.CopyN(archive, f, info.Size())
-				closeErr := f.Close()
+				_, err = archiveIO.copyN(archive, f, info.Size())
+				closeErr := fileIO.close(f)
 				if err != nil {
 					return err
 				}
@@ -267,39 +292,39 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 			return nil
 		})
 		if err != nil {
-			archive.Close()
-			encrypted.Close()
-			f.Close()
+			archiveIO.tarClose(archive)
+			archiveIO.cipherClose(encrypted)
+			fileIO.close(f)
 			return meta, err
 		}
 	}
-	if err = archive.Close(); err != nil {
-		encrypted.Close()
-		f.Close()
+	if err = archiveIO.tarClose(archive); err != nil {
+		archiveIO.cipherClose(encrypted)
+		fileIO.close(f)
 		return meta, err
 	}
-	if err = encrypted.Close(); err != nil {
-		f.Close()
+	if err = archiveIO.cipherClose(encrypted); err != nil {
+		fileIO.close(f)
 		return meta, err
 	}
-	if err = f.Sync(); err != nil {
-		f.Close()
+	if err = fileIO.sync(f); err != nil {
+		fileIO.close(f)
 		return meta, err
 	}
-	if err = f.Close(); err != nil {
+	if err = fileIO.close(f); err != nil {
 		return meta, err
 	}
-	if err = os.Rename(f.Name(), filepath.Join(dir, meta.ID+".age")); err != nil {
+	if err = fileIO.rename(f.Name(), filepath.Join(dir, meta.ID+".age")); err != nil {
 		return meta, err
 	}
 	archivePath := filepath.Join(dir, meta.ID+".age")
 	mac, err := snapshotMAC(archivePath, identity)
 	if err != nil {
-		os.Remove(archivePath)
+		fileIO.remove(archivePath)
 		return meta, err
 	}
 	if err = atomicWrite(filepath.Join(dir, meta.ID+".mac"), []byte(hex.EncodeToString(mac)), 0600); err != nil {
-		os.Remove(archivePath)
+		fileIO.remove(archivePath)
 		return meta, err
 	}
 	if err = writeJSON(filepath.Join(dir, meta.ID+".json"), meta); err != nil {
@@ -309,20 +334,24 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	return meta, nil
 }
 
+// snapshotMAC returns the keyed authentication tag for meta using the root
+// identity, or a key/encoding error.
 func snapshotMAC(path string, identity *age.X25519Identity) ([]byte, error) {
-	f, err := os.Open(path)
+	f, err := fileIO.open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer fileIO.close(f)
 	key := sha256.Sum256([]byte(keychainService + "\x00" + identity.String()))
 	mac := hmac.New(sha256.New, key[:])
-	if _, err = io.Copy(mac, f); err != nil {
+	if _, err = archiveIO.copy(mac, f); err != nil {
 		return nil, err
 	}
 	return mac.Sum(nil), nil
 }
 
+// dedupeItems returns items without redundant descendants, preserving required
+// category and owner metadata.
 func dedupeItems(items []snapshotItem) []snapshotItem {
 	var out []snapshotItem
 	for _, item := range items {
@@ -350,13 +379,15 @@ func dedupeItems(items []snapshotItem) []snapshotItem {
 	return out
 }
 
+// snapshots returns valid display indexes sorted by creation time. Restoration
+// separately authenticates encrypted manifests.
 func (e *engine) snapshots() ([]snapshotMeta, error) {
 	var result []snapshotMeta
 	dir := filepath.Join(e.cfg.Root, "snapshots")
 	if err := validateOwnedPath(e.cfg.Root, dir); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(dir)
+	entries, err := fileIO.readDir(dir)
 	if os.IsNotExist(err) {
 		return result, nil
 	}
@@ -390,6 +421,8 @@ func (e *engine) snapshots() ([]snapshotMeta, error) {
 	return result, nil
 }
 
+// safeID reports whether s is a complete safe operation/snapshot identity,
+// suitable for owned filenames.
 func safeID(id string) bool {
 	if len(id) != 32 {
 		return false
@@ -398,6 +431,8 @@ func safeID(id string) bool {
 	return err == nil
 }
 
+// purgeSnapshot permanently removes id's archive and display index after
+// validating the identity and owned paths.
 func (e *engine) purgeSnapshot(id string) error {
 	if !safeID(id) {
 		return fmt.Errorf("invalid snapshot ID")
@@ -407,13 +442,15 @@ func (e *engine) purgeSnapshot(id string) error {
 		if err := validateOwnedPath(e.cfg.Root, path); err != nil {
 			return err
 		}
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		if err := fileIO.remove(path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
 	return nil
 }
 
+// openSnapshot returns id's encrypted file and authenticated decryption reader.
+// The caller closes the file, and decryption errors are returned.
 func (e *engine) openSnapshot(id string) (*os.File, io.Reader, error) {
 	if !safeID(id) {
 		return nil, nil, fmt.Errorf("invalid snapshot ID")
@@ -430,7 +467,7 @@ func (e *engine) openSnapshot(id string) (*os.File, io.Reader, error) {
 	if err = validateOwnedPath(e.cfg.Root, macPath); err != nil {
 		return nil, nil, err
 	}
-	expected, err := os.ReadFile(macPath)
+	expected, err := fileIO.readFile(macPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -441,32 +478,34 @@ func (e *engine) openSnapshot(id string) (*os.File, io.Reader, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	f, err := os.Open(path)
+	f, err := fileIO.open(path)
 	if err != nil {
 		return nil, nil, err
 	}
 	key := sha256.Sum256([]byte(keychainService + "\x00" + identity.String()))
 	mac := hmac.New(sha256.New, key[:])
-	if _, err = io.Copy(mac, f); err != nil {
-		f.Close()
+	if _, err = archiveIO.copy(mac, f); err != nil {
+		fileIO.close(f)
 		return nil, nil, err
 	}
 	if !hmac.Equal(mac.Sum(nil), signature) {
-		f.Close()
+		fileIO.close(f)
 		return nil, nil, fmt.Errorf("snapshot authentication failed")
 	}
-	if _, err = f.Seek(0, io.SeekStart); err != nil {
-		f.Close()
+	if _, err = fileIO.seek(f, 0, io.SeekStart); err != nil {
+		fileIO.close(f)
 		return nil, nil, err
 	}
-	r, err := age.Decrypt(f, identity)
+	r, err := archiveIO.decrypt(f, identity)
 	if err != nil {
-		f.Close()
+		fileIO.close(f)
 		return nil, nil, err
 	}
 	return f, r, nil
 }
 
+// readManifest returns the authenticated manifest decoded from tr, rejecting
+// unexpected names, sizes and invalid metadata.
 func readManifest(archive *tar.Reader) (snapshotMeta, error) {
 	var meta snapshotMeta
 	header, err := archive.Next()
@@ -485,18 +524,20 @@ func readManifest(archive *tar.Reader) (snapshotMeta, error) {
 	return meta, nil
 }
 
+// authenticatedSnapshot returns id's verified encrypted metadata after checking
+// manifest identity and complete archive authentication.
 func (e *engine) authenticatedSnapshot(id string) (snapshotMeta, error) {
 	f, decrypted, err := e.openSnapshot(id)
 	if err != nil {
 		return snapshotMeta{}, err
 	}
-	defer f.Close()
+	defer fileIO.close(f)
 	meta, err := readManifest(tar.NewReader(decrypted))
 	if err != nil {
 		return meta, err
 	}
 	// Authenticate the complete age stream before relying on its manifest.
-	if _, err = io.Copy(io.Discard, decrypted); err != nil {
+	if _, err = archiveIO.copy(io.Discard, decrypted); err != nil {
 		return meta, err
 	}
 	if meta.ID != id {
@@ -505,6 +546,8 @@ func (e *engine) authenticatedSnapshot(id string) (snapshotMeta, error) {
 	return meta, nil
 }
 
+// validRestoreItem returns an error unless item's target matches s's documented
+// state or inst's verified installation ownership.
 func (e *engine) validRestoreItem(s harnessSpec, item snapshotItem, inst installation) error {
 	allowed := within(filepath.Join(e.cfg.Root, "installs", s.ID), item.Path) || within(filepath.Join(e.cfg.Root, "states", s.ID), item.Path) || item.Path == filepath.Join(e.cfg.BinDir, s.Command)
 	if within(filepath.Join(e.cfg.Root, "profiles"), item.Path) && filepath.Dir(item.Path) == filepath.Join(e.cfg.Root, "profiles") {
@@ -552,12 +595,14 @@ func (e *engine) validRestoreItem(s harnessSpec, item snapshotItem, inst install
 	return validateOwnedPath(item.Root, item.Path)
 }
 
+// restoreSnapshot restores id with ctx only after authenticating and validating
+// every archive member. IO/service failures retain recovery evidence.
 func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 	f, decrypted, err := e.openSnapshot(id)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer fileIO.close(f)
 	archive := tar.NewReader(decrypted)
 	meta, err := readManifest(archive)
 	if err != nil {
@@ -569,7 +614,7 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 	if err = e.validateRegistry(meta.Registry); err != nil {
 		return err
 	}
-	s, err := specFor(meta.Harness)
+	s, err := e.specFor(meta.Harness)
 	if err != nil {
 		return err
 	}
@@ -582,14 +627,14 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 	if err = validateOwnedPath(e.cfg.Root, stageRoot); err != nil {
 		return err
 	}
-	if err = os.MkdirAll(stageRoot, 0700); err != nil {
+	if err = fileIO.mkdir(stageRoot, 0700); err != nil {
 		return err
 	}
-	stage, err := os.MkdirTemp(stageRoot, "restore-*")
+	stage, err := fileIO.mkdirTemp(stageRoot, "restore-*")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(stage)
+	defer fileIO.removeAll(stage)
 	links := map[string]string{}
 	var total int64
 	for {
@@ -624,7 +669,7 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 		mode := fs.FileMode(header.Mode) & 0777
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err = os.MkdirAll(path, mode|0700); err != nil {
+			if err = fileIO.mkdir(path, mode|0700); err != nil {
 				return err
 			}
 		case tar.TypeReg:
@@ -632,15 +677,15 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 			if header.Size < 0 || total > e.cfg.MaxSnapshotBytes {
 				return fmt.Errorf("snapshot size exceeds limit")
 			}
-			if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			if err = fileIO.mkdir(filepath.Dir(path), 0700); err != nil {
 				return err
 			}
-			file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
+			file, err := fileIO.openFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 			if err != nil {
 				return err
 			}
-			_, copyErr := io.CopyN(file, archive, header.Size)
-			closeErr := file.Close()
+			_, copyErr := archiveIO.copyN(file, archive, header.Size)
+			closeErr := fileIO.close(file)
 			if copyErr != nil {
 				return copyErr
 			}
@@ -653,20 +698,20 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 			return fmt.Errorf("unsupported snapshot member type")
 		}
 	}
-	if _, err = io.Copy(io.Discard, decrypted); err != nil {
+	if _, err = archiveIO.copy(io.Discard, decrypted); err != nil {
 		return err
 	}
 	for path, target := range links {
-		if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err = fileIO.mkdir(filepath.Dir(path), 0700); err != nil {
 			return err
 		}
-		if err = os.Symlink(target, path); err != nil {
+		if err = fileIO.symlink(target, path); err != nil {
 			return err
 		}
 	}
 	for i, item := range meta.Items {
 		prepared := filepath.Join(stage, strconv.Itoa(i))
-		info, err := os.Lstat(prepared)
+		info, err := fileIO.lstat(prepared)
 		if item.Absent {
 			if err == nil {
 				return fmt.Errorf("absent snapshot item contains payload")
@@ -689,7 +734,7 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 			return err
 		}
 		prepared := filepath.Join(stage, strconv.Itoa(i))
-		if _, err = os.Lstat(prepared); os.IsNotExist(err) {
+		if _, err = fileIO.lstat(prepared); os.IsNotExist(err) {
 			if !item.Absent {
 				return fmt.Errorf("snapshot member is missing for %s", item.Path)
 			}
@@ -697,7 +742,7 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 		} else if err != nil {
 			return err
 		}
-		if err = os.MkdirAll(filepath.Dir(item.Path), 0700); err != nil {
+		if err = fileIO.mkdir(filepath.Dir(item.Path), 0700); err != nil {
 			return err
 		}
 		if err = replaceTree(prepared, item.Path); err != nil {
@@ -709,7 +754,7 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 			if err = e.validRestoreItem(s, item, meta.Install); err != nil {
 				return err
 			}
-			if err = os.RemoveAll(item.Path); err != nil {
+			if err = fileIO.removeAll(item.Path); err != nil {
 				return err
 			}
 		}
@@ -746,34 +791,42 @@ func (e *engine) restoreSnapshot(ctx context.Context, id string) error {
 	return nil
 }
 
+// replaceTree replaces target with stage while retaining a rollback rename
+// until replacement succeeds. It returns replacement or restoration failures.
 func replaceTree(source, target string) error {
 	parent := filepath.Dir(target)
-	if err := os.MkdirAll(parent, 0700); err != nil {
+	if err := fileIO.mkdir(parent, 0700); err != nil {
 		return err
 	}
-	stage, err := os.MkdirTemp(parent, ".harness-ctl-replace-*")
+	stage, err := fileIO.mkdirTemp(parent, ".harness-ctl-replace-*")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(stage)
+	retainRollback := false
+	defer func() {
+		if !retainRollback {
+			_ = fileIO.removeAll(stage)
+		}
+	}()
 	ready := filepath.Join(stage, "ready")
 	old := filepath.Join(stage, "old")
 	if err = copyTree(source, ready); err != nil {
 		return err
 	}
 	hadOld := false
-	if _, err = os.Lstat(target); err == nil {
-		if err = os.Rename(target, old); err != nil {
+	if _, err = fileIO.lstat(target); err == nil {
+		if err = fileIO.rename(target, old); err != nil {
 			return err
 		}
 		hadOld = true
 	} else if !os.IsNotExist(err) {
 		return err
 	}
-	if err = os.Rename(ready, target); err != nil {
+	if err = fileIO.rename(ready, target); err != nil {
 		if hadOld {
-			if restoreErr := os.Rename(old, target); restoreErr != nil {
-				return errors.Join(err, restoreErr)
+			if restoreErr := fileIO.rename(old, target); restoreErr != nil {
+				retainRollback = true
+				return fmt.Errorf("replacement failed. Original payload retained at %s: %w", old, errors.Join(err, restoreErr))
 			}
 		}
 		return err
@@ -781,52 +834,54 @@ func replaceTree(source, target string) error {
 	return nil
 }
 
+// copyTree copies src to dest using the same confinement and file-type checks
+// as cancellable recovery copying.
 func copyTree(source, target string) error {
 	return copyTreeContext(context.Background(), source, target)
 }
 
 // Component imports use cancellable copying so rollback cannot race a writer.
 func copyTreeContext(ctx context.Context, source, target string) error {
-	return filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
+	return fileIO.walk(source, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		rel, err := filepath.Rel(source, path)
+		rel, err := fileIO.rel(source, path)
 		if err != nil {
 			return err
 		}
 		dest := filepath.Join(target, rel)
-		info, err := d.Info()
+		info, err := fileIO.info(d)
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
-			return os.MkdirAll(dest, info.Mode().Perm())
+			return fileIO.mkdir(dest, info.Mode().Perm())
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			link, err := os.Readlink(path)
+			link, err := fileIO.readlink(path)
 			if err != nil {
 				return err
 			}
-			return os.Symlink(link, dest)
+			return fileIO.symlink(link, dest)
 		}
-		if err = os.MkdirAll(filepath.Dir(dest), 0700); err != nil {
+		if err = fileIO.mkdir(filepath.Dir(dest), 0700); err != nil {
 			return err
 		}
-		in, err := os.Open(path)
+		in, err := fileIO.open(path)
 		if err != nil {
 			return err
 		}
-		defer in.Close()
-		out, err := os.OpenFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+		defer fileIO.close(in)
+		out, err := fileIO.openFile(dest, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
 		if err != nil {
 			return err
 		}
-		_, copyErr := io.Copy(out, contextReader{ctx, in})
-		closeErr := out.Close()
+		_, copyErr := archiveIO.copy(out, contextReader{ctx, in})
+		closeErr := fileIO.close(out)
 		if copyErr != nil {
 			return copyErr
 		}
@@ -834,11 +889,14 @@ func copyTreeContext(ctx context.Context, source, target string) error {
 	})
 }
 
+// contextReader checks cancellation before forwarding reads from its source.
 type contextReader struct {
 	ctx    context.Context
 	reader io.Reader
 }
 
+// Read reads into data through the wrapped reader unless cancellation has been
+// requested, returning the byte count and read/context error.
 func (r contextReader) Read(data []byte) (int, error) {
 	if err := r.ctx.Err(); err != nil {
 		return 0, err

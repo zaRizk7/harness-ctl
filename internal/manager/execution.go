@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/zaRizk7/harness-ctl/internal/stateconfig"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,18 +12,20 @@ import (
 	"time"
 )
 
+// lock returns an unlock function after acquiring the nonblocking mutation
+// lock. Unsafe storage or another active writer returns an error.
 func (e *engine) lock() (func(), error) {
 	if err := rejectLinkedAncestors(e.cfg.Root); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(e.cfg.Root, 0700); err != nil {
+	if err := fileIO.mkdir(e.cfg.Root, 0700); err != nil {
 		return nil, err
 	}
 	path := filepath.Join(e.cfg.Root, "operation.lock")
 	if err := validateOwnedPath(e.cfg.Root, path); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
+	f, err := fileIO.openFile(path, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +36,9 @@ func (e *engine) lock() (func(), error) {
 	return func() { _ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN); _ = f.Close() }, nil
 }
 
-func (e *engine) execute(ctx context.Context, p *plan, approval string, progress func(string)) (result error) {
+// execute applies p only when approval equals its preview ID. It holds the
+// mutation lock until verification or rollback completes and returns any failure.
+func (e *engine) execute(ctx context.Context, p *plan, approval string, progress func(string)) error {
 	if p == nil || approval != p.ID || !safeID(p.ID) {
 		return fmt.Errorf("execution requires approval of the displayed plan")
 	}
@@ -42,6 +47,16 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 		return err
 	}
 	defer unlock()
+	return e.executeLocked(ctx, p, approval, progress)
+}
+
+// executeLocked owns one transaction. Its caller must hold the mutation lock.
+// Keeping lock acquisition outside lets a batch protect the registry throughout.
+func (e *engine) executeLocked(ctx context.Context, p *plan, approval string, progress func(string)) (result error) {
+	if p == nil || approval != p.ID || !safeID(p.ID) {
+		return fmt.Errorf("execution requires approval of the displayed plan")
+	}
+	var err error
 	if err = e.validatePlan(p); err != nil {
 		return err
 	}
@@ -141,7 +156,7 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 		if err = e.stagePackage(ctx, p); err != nil {
 			return err
 		}
-		defer os.Remove(p.Artifact)
+		defer fileIO.remove(p.Artifact)
 	}
 	if len(p.NativeScript) > 0 {
 		if err = validateOwnedPath(e.cfg.Root, p.Artifact); err != nil {
@@ -150,7 +165,7 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 		if err = atomicWrite(p.Artifact, p.NativeScript, 0700); err != nil {
 			return err
 		}
-		defer os.Remove(p.Artifact)
+		defer fileIO.remove(p.Artifact)
 	}
 	if p.Request.Action == "migrate" {
 		if err = e.migrateState(p); err != nil {
@@ -177,10 +192,10 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 		if err = e.removeInstallation(p.Install); err != nil {
 			return err
 		}
-		if _, err = os.Lstat(p.Install.Root); !os.IsNotExist(err) {
+		if _, err = fileIO.lstat(p.Install.Root); !os.IsNotExist(err) {
 			return fmt.Errorf("uninstall did not remove the selected package root")
 		}
-		if _, err = os.Stat(p.Install.Path); !os.IsNotExist(err) {
+		if _, err = fileIO.stat(p.Install.Path); !os.IsNotExist(err) {
 			return fmt.Errorf("uninstall did not remove the selected command")
 		}
 	}
@@ -240,7 +255,7 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 		if err = validateOwnedPath(e.cfg.Root, profileRoot); err != nil {
 			return err
 		}
-		if err = os.RemoveAll(profileRoot); err != nil {
+		if err = fileIO.removeAll(profileRoot); err != nil {
 			return err
 		}
 	}
@@ -254,6 +269,8 @@ func (e *engine) execute(ctx context.Context, p *plan, approval string, progress
 	return nil
 }
 
+// withoutInstall returns registry installations except id, preserving the
+// remaining order.
 func (e *engine) withoutInstall(id string) []installation {
 	var installs []installation
 	for _, inst := range e.reg.Installs {
@@ -264,13 +281,18 @@ func (e *engine) withoutInstall(id string) []installation {
 	return installs
 }
 
+// removeManagedTree deletes path only within the owned installs subtree.
+// Validation and removal failures are returned.
 func (e *engine) removeManagedTree(path string) error {
 	if err := validateOwnedPath(filepath.Join(e.cfg.Root, "installs"), path); err != nil {
 		return err
 	}
-	return os.RemoveAll(path)
+	return fileIO.removeAll(path)
 }
 
+// removeInstallation removes inst's owned launchers, payload and service
+// registrations. Shared runtimes and user-state preservation belong to
+// planning.
 func (e *engine) removeInstallation(inst installation) error {
 	if inst.Managed {
 		if err := e.removeShim(inst); err != nil {
@@ -288,7 +310,7 @@ func (e *engine) removeInstallation(inst installation) error {
 		if err := e.removeOwnedLauncher(inst); err != nil {
 			return err
 		}
-		if err := os.RemoveAll(inst.Root); err != nil {
+		if err := fileIO.removeAll(inst.Root); err != nil {
 			return err
 		}
 	}
@@ -296,22 +318,24 @@ func (e *engine) removeInstallation(inst installation) error {
 		if err := validateOwnedPath(filepath.Join(e.cfg.Home, "Library/LaunchAgents"), path); err != nil {
 			return err
 		}
-		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		if err := fileIO.remove(path); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
 	return nil
 }
 
+// removeOwnedLauncher removes inst's user-local launcher only when its target
+// or bounded script proves ownership. Changed ownership returns an error.
 func (e *engine) removeOwnedLauncher(inst installation) error {
 	if filepath.Dir(inst.Path) != filepath.Join(e.cfg.Home, ".local/bin") {
 		return fmt.Errorf("native launcher is outside the user-local ownership contract")
 	}
-	resolved, err := filepath.EvalSymlinks(inst.Path)
+	resolved, err := fileIO.eval(inst.Path)
 	if err == nil && within(inst.Root, resolved) {
-		return os.Remove(inst.Path)
+		return fileIO.remove(inst.Path)
 	}
-	info, err := os.Lstat(inst.Path)
+	info, err := fileIO.lstat(inst.Path)
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -319,30 +343,32 @@ func (e *engine) removeOwnedLauncher(inst installation) error {
 		return err
 	}
 	if info.Mode().IsRegular() {
-		data, err := os.ReadFile(inst.Path)
+		data, err := fileIO.readFile(inst.Path)
 		if err != nil {
 			return err
 		}
 		if len(data) < 16384 && strings.Contains(string(data), inst.Root) {
-			return os.Remove(inst.Path)
+			return fileIO.remove(inst.Path)
 		}
 	}
 	return fmt.Errorf("launcher ownership changed")
 }
 
+// installedResult returns a validated installation produced by p. It checks
+// executable confinement and the previewed npm identity/version.
 func (e *engine) installedResult(p *plan) (installation, error) {
 	path := filepath.Join(p.Destination, "bin", p.Spec.Command)
 	if p.Spec.ID == "hermes" {
 		path = filepath.Join(p.Destination, ".hermes", "bin", "hermes")
 	}
-	resolved, err := filepath.EvalSymlinks(path)
+	resolved, err := fileIO.eval(path)
 	if err != nil {
 		return installation{}, fmt.Errorf("installer did not publish its documented executable: %w", err)
 	}
 	if !within(p.Destination, resolved) {
 		return installation{}, fmt.Errorf("installed executable escapes managed prefix")
 	}
-	info, err := os.Stat(path)
+	info, err := fileIO.stat(path)
 	if err != nil {
 		return installation{}, err
 	}
@@ -368,9 +394,15 @@ func (e *engine) installedResult(p *plan) (installation, error) {
 	return inst, e.validateRegistry(registry{Installs: []installation{inst}})
 }
 
+// verifyTracked checks p's tracked executable and npm target version. Missing
+// or different results return an error.
 func (e *engine) verifyTracked(p *plan) error {
-	if _, err := os.Stat(p.Install.Path); err != nil {
+	info, err := fileIO.stat(p.Install.Path)
+	if err != nil {
 		return fmt.Errorf("installed executable is missing: %w", err)
+	}
+	if !info.Mode().IsRegular() || info.Mode()&0111 == 0 {
+		return fmt.Errorf("installed command is not executable")
 	}
 	if p.Install.Method == "npm" {
 		var manifest struct {
@@ -386,6 +418,8 @@ func (e *engine) verifyTracked(p *plan) error {
 	return nil
 }
 
+// verifyState checks p's preservation and discard results against
+// resource/field fingerprints. It returns the first violated invariant.
 func (e *engine) verifyState(p *plan) error {
 	if p.Request.Action == "migrate" {
 		return nil
@@ -418,7 +452,7 @@ func (e *engine) verifyState(p *plan) error {
 				return err
 			}
 			for path, cat := range r.Fields {
-				parent, key, ok := fieldParent(value, path)
+				parent, key, ok := stateconfig.FieldParent(value, path)
 				exists := false
 				if ok {
 					_, exists = parent[key]
@@ -434,7 +468,7 @@ func (e *engine) verifyState(p *plan) error {
 				}
 			}
 		} else {
-			if _, err := os.Lstat(r.Path); !os.IsNotExist(err) {
+			if _, err := fileIO.lstat(r.Path); !os.IsNotExist(err) {
 				return fmt.Errorf("discarded resource remains: %s", r.Path)
 			}
 		}
@@ -442,6 +476,8 @@ func (e *engine) verifyState(p *plan) error {
 	return nil
 }
 
+// saveRecord atomically stores record under its safe operation ID. Unsafe paths
+// and serialization/IO failures are returned.
 func (e *engine) saveRecord(record operationRecord) error {
 	path := filepath.Join(e.cfg.Root, "operations", record.ID+".json")
 	if !safeID(record.ID) {
@@ -452,13 +488,16 @@ func (e *engine) saveRecord(record operationRecord) error {
 	}
 	return writeJSON(path, record)
 }
+
+// records returns validated operation journals sorted by recency. Missing
+// storage is empty, malformed records are errors.
 func (e *engine) records() ([]operationRecord, error) {
 	var result []operationRecord
 	dir := filepath.Join(e.cfg.Root, "operations")
 	if err := validateOwnedPath(e.cfg.Root, dir); err != nil {
 		return nil, err
 	}
-	entries, err := os.ReadDir(dir)
+	entries, err := fileIO.readDir(dir)
 	if os.IsNotExist(err) {
 		return result, nil
 	}
@@ -480,6 +519,9 @@ func (e *engine) records() ([]operationRecord, error) {
 	}
 	return result, nil
 }
+
+// ensureNoPending returns an error when an unsettled operation requires
+// recovery before another mutation.
 func (e *engine) ensureNoPending() error {
 	records, err := e.records()
 	if err != nil {
@@ -495,6 +537,8 @@ func (e *engine) ensureNoPending() error {
 	return nil
 }
 
+// expireSnapshots authenticates recovery manifests and purges expired archives.
+// Any authentication or deletion failure stops retention.
 func (e *engine) expireSnapshots() error {
 	metas, err := e.snapshots()
 	if err != nil {
@@ -513,6 +557,9 @@ func (e *engine) expireSnapshots() error {
 	}
 	return nil
 }
+
+// purgeAffected permanently removes archives containing p's discarded
+// categories, excluding the active rollback archive keep.
 func (e *engine) purgeAffected(p *plan, except ...string) error {
 	metas, err := e.snapshots()
 	if err != nil {
@@ -554,6 +601,8 @@ func (e *engine) purgeAffected(p *plan, except ...string) error {
 	return nil
 }
 
+// cloneCategories returns an independent copy of m so preview/control changes
+// cannot mutate shared request maps.
 func cloneCategories(input map[category]bool) map[category]bool {
 	out := map[category]bool{}
 	for cat, keep := range input {
@@ -562,17 +611,19 @@ func cloneCategories(input map[category]bool) map[category]bool {
 	return out
 }
 
+// migrateState copies p's owned state into managed roots without removing the
+// original. Unsafe links and copy failures stop migration.
 func (e *engine) migrateState(p *plan) error {
 	target := e.managedStateRoot(p.Spec)
 	if err := validateOwnedPath(e.cfg.Root, target); err != nil {
 		return err
 	}
-	if entries, err := os.ReadDir(target); err == nil && len(entries) > 0 {
+	if entries, err := fileIO.readDir(target); err == nil && len(entries) > 0 {
 		return fmt.Errorf("migration destination already contains state")
 	} else if err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := os.MkdirAll(target, 0700); err != nil {
+	if err := fileIO.mkdir(target, 0700); err != nil {
 		return err
 	}
 	for _, r := range p.Resources {
@@ -595,6 +646,8 @@ func (e *engine) migrateState(p *plan) error {
 	return nil
 }
 
+// applyMigratedState applies p's category preservation to copied destinations.
+// It never edits the migration source.
 func (e *engine) applyMigratedState(p *plan) error {
 	root := e.managedStateRoot(p.Spec)
 	copyEngine := *e

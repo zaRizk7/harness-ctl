@@ -1,4 +1,4 @@
-// Command harness-ctl manages local coding harnesses through an interactive TUI.
+// Command harness-ctl manages local coding harnesses through a TUI or CLI.
 package main
 
 import (
@@ -6,4 +6,7 @@ import (
 	"os"
 )
 
-func main() { os.Exit(manager.Main(os.Args[1:])) }
+var exit = os.Exit
+
+// main forwards process arguments and uses the command exit status.
+func main() { exit(manager.Main(os.Args[1:])) }

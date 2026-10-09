@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"github.com/zaRizk7/harness-ctl/internal/library"
 	"os"
 	"os/signal"
 	"slices"
@@ -15,66 +16,114 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// inventoryMsg returns installation discovery results to the TUI.
 type inventoryMsg struct {
 	installs []installation
 	err      error
 }
+
+// optionsMsg returns the owners affected by the selected state scope.
 type optionsMsg struct {
-	owners []string
-	err    error
+	owners     []string
+	categories []category
+	err        error
 }
+
+// planMsg returns a read-only lifecycle preview or its construction error.
 type planMsg struct {
 	plan *plan
 	err  error
 }
+
+// progressMsg carries one operation status update without configuration values.
 type progressMsg string
+
+// doneMsg reports operation completion, including any execution or rollback error.
 type doneMsg struct{ err error }
+
+// recoveryMsg returns authenticated recovery entries and operation journals.
 type recoveryMsg struct {
 	snapshots []snapshotMeta
 	records   []operationRecord
 	err       error
 }
+
+// snapshotMsg returns the selected authenticated recovery metadata.
 type snapshotMsg struct {
 	meta snapshotMeta
 	err  error
 }
+
+// interruptMsg requests cancellation before the TUI exits.
 type interruptMsg struct{}
 
+// tuiModel stores screen selection, preview approval and cancellable command state.
 type tuiModel struct {
-	e               *engine
-	screen          string
-	cursor          int
-	harness         int
-	installCursor   int
-	width, height   int
-	installs        []installation
-	req             request
-	owners          []string
-	p               *plan
-	status          string
-	typed           string
-	editing         bool
-	events          chan tea.Msg
-	cancel          context.CancelFunc
-	backups         []snapshotMeta
-	records         []operationRecord
-	selectedBackup  snapshotMeta
-	selectedRecord  operationRecord
-	profileDisabled map[category]bool
-	componentItems  []componentItem
-	componentCat    category
-	componentScope  string
+	libraryItems                            []library.View
+	libraryID, libraryAction, libraryBefore string
+	librarySelected                         map[string]bool
+	libraryEdit                             libraryEditMsg
+	libraryApplication                      *libraryApply
+	batchMode                               bool
+	batchSelected                           map[string]bool
+	batch                                   *batchPlan
+	self                                    *selfPlan
+	selfRemoveHarnesses, selfRemoveState    bool
+	selfDiscardHarnessState, selfPermanent  bool
+	selfOwnerCandidates, selfOwners         []string
+	accountItems                            []accountView
+	accountMetrics                          []accountMetric
+	monitorExpanded                         bool
+	monitorCursor                           int
+	monitorError                            string
+	accountID, accountAction                string
+	accountBefore                           string
+	accountEdit                             accountEditMsg
+	e                                       *engine
+	screen                                  string
+	cursor                                  int
+	harness                                 int
+	installCursor                           int
+	width, height                           int
+	installs                                []installation
+	req                                     request
+	owners                                  []string
+	p                                       *plan
+	status                                  string
+	typed                                   string
+	editing                                 bool
+	events                                  chan tea.Msg
+	cancel                                  context.CancelFunc
+	backups                                 []snapshotMeta
+	records                                 []operationRecord
+	selectedBackup                          snapshotMeta
+	selectedRecord                          operationRecord
+	optionCategories                        []category
+	profileDisabled                         map[category]bool
+	componentItems                          []componentItem
+	componentCat                            category
+	componentScope                          string
 }
+
+// newTUIProgram is the terminal runtime boundary, allowing isolated input/output in integration tests.
+var newTUIProgram = tea.NewProgram
 
 var actionNames = []string{"Install isolated", "Update / upgrade", "Reinstall", "Factory reset", "Uninstall", "Migrate to isolated", "Launch source profile", "Manage components"}
 var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall", "migrate", "profile", "manage"}
 
+// newModel returns the initial read-only TUI state for e without starting
+// inventory or creating manager storage.
 func newModel(e *engine) tuiModel {
 	return tuiModel{e: e, screen: "home", width: 90, height: 28, status: "Reading executable and package metadata…"}
 }
 
-// Init reads metadata without executing a harness or mutating its state.
-func (m tuiModel) Init() tea.Cmd { return m.inventory() }
+// Init returns commands to read installation metadata and enabled account reports.
+// Explicitly configured native reporting may start a bounded account-only process.
+// Initialization does not approve lifecycle or component changes.
+func (m tuiModel) Init() tea.Cmd { return tea.Batch(m.inventory(), m.loadGlobalMonitor()) }
+
+// inventory returns a command that refreshes ownership and reads installation
+// metadata. Its message carries results or the error.
 func (m tuiModel) inventory() tea.Cmd {
 	return func() tea.Msg {
 		if err := m.e.refreshRegistry(); err != nil {
@@ -84,10 +133,13 @@ func (m tuiModel) inventory() tea.Cmd {
 		return inventoryMsg{installs, err}
 	}
 }
+
+// selectedInst returns the selected installation for the current harness, or an
+// empty value when none exists.
 func (m tuiModel) selectedInst() installation {
 	var list []installation
 	for _, i := range m.installs {
-		if i.Harness == catalog[m.harness].ID {
+		if i.Harness == m.e.cfg.Harnesses[m.harness].ID {
 			list = append(list, i)
 		}
 	}
@@ -96,9 +148,12 @@ func (m tuiModel) selectedInst() installation {
 	}
 	return list[m.installCursor%len(list)]
 }
+
+// loadOptions returns a command collecting shared owners for the selected state
+// scope. It reports inventory errors without mutations.
 func (m tuiModel) loadOptions() tea.Cmd {
 	return func() tea.Msg {
-		s := catalog[m.harness]
+		s := m.e.cfg.Harnesses[m.harness]
 		e := *m.e
 		e.cfg.StateRoots = map[string]string{}
 		for id, root := range m.e.cfg.StateRoots {
@@ -124,17 +179,27 @@ func (m tuiModel) loadOptions() tea.Cmd {
 				owners = append(owners, owner)
 			}
 		}
-		return optionsMsg{owners: owners}
+		return optionsMsg{owners: owners, categories: presentCategories(rs)}
 	}
 }
+
+// preview returns a command building the displayed request or batch under a
+// probe deadline. The message contains the plan or error.
 func (m tuiModel) preview() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(m.e.cfg.ProbeSeconds)*time.Second)
 		defer cancel()
+		if m.batchMode {
+			b, err := m.e.buildBatch(ctx, m.batchRequests())
+			return batchPlanMsg{b, err}
+		}
 		p, err := m.e.buildPlan(ctx, m.req)
 		return planMsg{p, err}
 	}
 }
+
+// loadRecovery returns a command loading recovery metadata and unsettled
+// operation journals. It never restores or purges anything.
 func (m tuiModel) loadRecovery() tea.Cmd {
 	return func() tea.Msg {
 		backups, err := m.e.snapshots()
@@ -151,8 +216,13 @@ func (m tuiModel) loadRecovery() tea.Cmd {
 		return recoveryMsg{backups, pending, err}
 	}
 }
+
+// waitEvent returns a command receiving the next progress/completion message
+// from events.
 func waitEvent(events <-chan tea.Msg) tea.Cmd { return func() tea.Msg { return <-events } }
 
+// startOperation starts approved work with cancellation and a progress
+// callback, returning a command that waits for its first event.
 func (m *tuiModel) startOperation(work func(context.Context, func(string)) error) tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	m.cancel = cancel
@@ -175,8 +245,16 @@ func (m *tuiModel) startOperation(work func(context.Context, func(string)) error
 	return waitEvent(events)
 }
 
-// Update advances the interaction or reports progress from an approved operation.
+// Update consumes msg and returns the next screen model and optional asynchronous
+// command. Mutations start only from an approved preview. Progress and failure
+// messages preserve recovery and cancellation state.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if model, cmd, handled := m.libraryUpdate(msg); handled {
+		return model, cmd
+	}
+	if model, cmd, handled := m.managementUpdate(msg); handled {
+		return model, cmd
+	}
 	switch msg := msg.(type) {
 	case componentsMsg:
 		m.componentItems, m.owners = msg.items, msg.owners
@@ -215,7 +293,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = msg.err.Error()
 		} else {
 			m.owners = msg.owners
+			m.optionCategories = msg.categories
 			m.screen = "options"
+			if m.req.Action == "profile" {
+				m.screen = "profile"
+			}
 			m.status = ""
 		}
 		m.cursor = 0
@@ -285,8 +367,24 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// key handles msg according to the active screen. It returns the updated model
+// and optional asynchronous command.
 func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
+	if key == "f2" {
+		m.monitorExpanded = !m.monitorExpanded
+		m.monitorCursor = 0
+		return m, nil
+	}
+	if m.monitorExpanded && key != "ctrl+c" {
+		if key == "up" {
+			m.monitorCursor = max(0, m.monitorCursor-1)
+		}
+		if key == "down" {
+			m.monitorCursor++
+		}
+		return m, nil
+	}
 	if m.screen == "busy" {
 		if key == "ctrl+c" && m.cancel != nil {
 			m.cancel()
@@ -318,7 +416,7 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.screen == "preview" || m.screen == "restore-preview" || m.screen == "purge-preview" || m.screen == "journal-preview" || m.screen == "profile-preview" {
+	if m.screen == "preview" || m.screen == "restore-preview" || m.screen == "purge-preview" || m.screen == "journal-preview" || m.screen == "profile-preview" || m.screen == "self-preview" || m.screen == "account-preview" || m.screen == "library-record-preview" {
 		if key == "esc" {
 			m.screen = "home"
 			m.typed = ""
@@ -383,7 +481,7 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.status = ""
 		return m, nil
 	}
-	if key == "up" || key == "k" {
+	if key == "up" || (key == "k" && m.screen != "accounts") {
 		if m.cursor > 0 {
 			m.cursor--
 		}
@@ -394,6 +492,12 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			m.cursor++
 		}
 		return m, nil
+	}
+	if model, cmd, handled := m.libraryKey(key); handled {
+		return model, cmd
+	}
+	if model, cmd, handled := m.managementKey(key); handled {
+		return model, cmd
 	}
 	if strings.HasPrefix(m.screen, "component") {
 		return m.componentKey(key)
@@ -410,6 +514,9 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, m.inventory()
 		}
 		if key == "enter" {
+			m.libraryApplication = nil
+			m.batchMode = false
+			m.batch = nil
 			m.harness = m.cursor
 			m.screen = "actions"
 			m.cursor = 0
@@ -419,35 +526,34 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "actions":
 		if key == "tab" {
 			m.installCursor++
+			m.cursor = 0
 			return m, nil
 		}
 		if key == "enter" {
 			inst := m.selectedInst()
-			action := actionIDs[m.cursor]
+			actions := m.actions()
+			if m.cursor >= len(actions) {
+				return m, nil
+			}
+			action := actions[m.cursor]
 			if action == "manage" {
 				m.componentScope = "base"
 				if _, exists := m.e.reg.Profiles[inst.ID]; exists {
 					m.componentScope = "profile"
 				}
-				m.req = request{Harness: catalog[m.harness].ID, InstallID: inst.ID, Action: "manage", Preserve: keepAll()}
+				m.req = request{Harness: m.e.cfg.Harnesses[m.harness].ID, InstallID: inst.ID, Action: "manage", Preserve: keepAll()}
 				m.screen, m.cursor = "component-groups", 0
 				return m, nil
 			}
-			if action != "install" && inst.ID == "" {
-				m.status = "Select an installed harness, or choose Install isolated."
-				return m, nil
-			}
 			if action == "profile" {
-				if !inst.Managed {
-					m.status = "Profiles require a managed installation. Migrate first."
-					return m, nil
-				}
+				// actions exposes profiles only for installed managed harnesses.
 				m.profileDisabled = map[category]bool{}
-				m.screen = "profile"
+				m.req = request{Harness: inst.Harness, InstallID: inst.ID, Action: "profile", Preserve: keepAll()}
+				m.screen = "loading"
 				m.cursor = 0
-				return m, nil
+				return m, m.loadOptions()
 			}
-			m.req = request{Harness: catalog[m.harness].ID, InstallID: inst.ID, Action: action, Model: "isolated", Preserve: keepAll()}
+			m.req = request{Harness: m.e.cfg.Harnesses[m.harness].ID, InstallID: inst.ID, Action: action, Model: "isolated", Preserve: keepAll()}
 			if action == "reset" {
 				m.req.Preserve = map[category]bool{}
 			}
@@ -490,7 +596,10 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case "profile":
 		if key == "space" {
-			cat := categories[m.cursor]
+			if m.cursor >= len(m.optionCategories) {
+				return m, nil
+			}
+			cat := m.optionCategories[m.cursor]
 			m.profileDisabled[cat] = !m.profileDisabled[cat]
 		}
 		if key == "enter" {
@@ -514,20 +623,38 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// itemCount returns the navigable row count for the active screen.
 func (m tuiModel) itemCount() int {
 	switch m.screen {
-	case "home":
-		return len(catalog)
+	case "home", "batch-select":
+		return len(m.e.cfg.Harnesses)
+	case "library":
+		return len(m.libraryItems)
+	case "library-select":
+		return len(m.libraryTargets())
+	case "library-owners":
+		return len(m.owners)
+	case "batch-actions":
+		return len(m.batchActions())
+	case "self-options":
+		if m.selfRemoveHarnesses {
+			return 4
+		}
+		return 2
+	case "self-owners":
+		return len(m.selfOwnerCandidates)
+	case "accounts":
+		return len(m.accountItems)
 	case "actions":
-		return len(actionNames)
+		return len(m.actions())
 	case "options":
-		return 3 + len(categories) + len(m.owners)
+		return len(m.options())
 	case "recovery":
 		return len(m.records) + len(m.backups)
 	case "profile":
-		return len(categories)
+		return len(m.optionCategories)
 	case "component-groups":
-		return len(componentCategories)
+		return len(m.managementCategories())
 	case "components":
 		return len(m.componentItems)
 	case "component-owners":
@@ -535,46 +662,16 @@ func (m tuiModel) itemCount() int {
 	}
 	return 1
 }
-func (m *tuiModel) toggleOption() {
-	switch m.cursor {
-	case 0:
-		all := true
-		for _, cat := range categories {
-			all = all && m.req.Preserve[cat]
-		}
-		if all {
-			m.req.Preserve = map[category]bool{auth: true}
-		} else if len(m.req.Preserve) == 1 && m.req.Preserve[auth] {
-			m.req.Preserve = map[category]bool{}
-		} else {
-			m.req.Preserve = keepAll()
-		}
-	case 1:
-		m.editing = true
-	case 2:
-		m.req.Permanent = !m.req.Permanent
-	default:
-		if m.cursor < 3+len(categories) {
-			cat := categories[m.cursor-3]
-			m.req.Preserve[cat] = !m.req.Preserve[cat]
-		} else {
-			owner := m.owners[m.cursor-3-len(categories)]
-			if contains(m.req.Owners, owner) {
-				var owners []string
-				for _, o := range m.req.Owners {
-					if o != owner {
-						owners = append(owners, o)
-					}
-				}
-				m.req.Owners = owners
-			} else {
-				m.req.Owners = append(m.req.Owners, owner)
-			}
-		}
-	}
-}
 
+// confirm returns an execution command only after the required approval text
+// matches the current preview.
 func (m tuiModel) confirm() (tea.Model, tea.Cmd) {
+	if model, cmd, handled := m.libraryConfirm(); handled {
+		return model, cmd
+	}
+	if model, cmd, handled := m.managementConfirm(); handled {
+		return model, cmd
+	}
 	switch m.screen {
 	case "preview":
 		word := "apply"
@@ -587,6 +684,18 @@ func (m tuiModel) confirm() (tea.Model, tea.Cmd) {
 		if m.typed != word {
 			m.status = "Type " + word + " to approve this preview."
 			return m, nil
+		}
+		if m.batchMode && m.batch != nil {
+			b := m.batch
+			if m.libraryApplication != nil {
+				p := m.libraryApplication
+				return m, m.startOperation(func(ctx context.Context, progress func(string)) error {
+					return m.e.executeLibraryApply(ctx, p, b.ID, progress)
+				})
+			}
+			return m, m.startOperation(func(ctx context.Context, progress func(string)) error {
+				return m.e.executeBatch(ctx, b, b.ID, progress)
+			})
 		}
 		if m.p == nil || len(m.p.Blockers) > 0 {
 			m.status = "Resolve the blockers before executing."
@@ -630,6 +739,8 @@ func (m tuiModel) confirm() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// cleanText returns s without control characters so external names cannot
+// inject terminal controls.
 func cleanText(s string) string {
 	return strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) {
@@ -638,6 +749,8 @@ func cleanText(s string) string {
 		return r
 	}, s)
 }
+
+// mark returns the checkbox label for v.
 func mark(v bool) string {
 	if v {
 		return "[x]"
@@ -647,18 +760,31 @@ func mark(v bool) string {
 
 // View renders metadata and approval controls without displaying state values.
 func (m tuiModel) View() tea.View {
+	if m.monitorExpanded {
+		view := tea.NewView(m.terminalContent(m.monitorView(), nil))
+		view.AltScreen = true
+		return view
+	}
 	var lines []string
 	inst := m.selectedInst()
 	title := "harness-ctl"
 	if m.screen != "home" && m.screen != "recovery" {
-		title += " / " + catalog[m.harness].Name
+		title += " / " + m.e.cfg.Harnesses[m.harness].Name
 	}
 	lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6")).Render(title), "")
 	hint := "↑/↓ navigate · Enter select · Esc home · q quit"
+	if extra, h := m.libraryView(); h != "" {
+		lines = append(lines, extra...)
+		hint = h
+	}
+	if extra, h := m.managementView(); h != "" {
+		lines = append(lines, extra...)
+		hint = h
+	}
 	switch m.screen {
 	case "component-groups", "components", "component-owners":
 		lines = append(lines, m.componentView()...)
-		hint = "Enter browse · a add/install · e edit · d disable · u enable · x remove · o owners · p scope"
+		hint = "Enter browse · a add/install · e edit · d disable · u enable · x remove · t refresh marketplace · o owners · p scope"
 		if m.screen == "component-groups" {
 			hint = "↑/↓ select category · Enter browse · Esc home"
 		}
@@ -666,7 +792,8 @@ func (m tuiModel) View() tea.View {
 			hint = "↑/↓ navigate · Space select affected owner · Enter return"
 		}
 	case "home":
-		for i, s := range catalog {
+		var items []string
+		for _, s := range m.e.cfg.Harnesses {
 			count := 0
 			for _, inst := range m.installs {
 				if inst.Harness == s.ID {
@@ -674,9 +801,10 @@ func (m tuiModel) View() tea.View {
 				}
 			}
 			label := fmt.Sprintf("%-18s %d installation(s)", s.Name, count)
-			lines = append(lines, m.row(i, label))
+			items = append(items, label)
 		}
-		lines = append(lines, "", "r recovery · d refresh metadata")
+		lines = append(lines, m.listWindow(items)...)
+		lines = append(lines, "", "l shared library · b batch · a accounts · u uninstall manager · r recovery · d refresh metadata")
 		for _, inst := range m.installs {
 			if inst.Method == "unsupported" {
 				lines = append(lines, "Unsupported: "+cleanText(inst.Harness)+" at "+cleanText(inst.Path))
@@ -686,30 +814,13 @@ func (m tuiModel) View() tea.View {
 		if inst.ID != "" {
 			lines = append(lines, "Selected: "+cleanText(inst.Method)+" · "+cleanText(inst.Version), cleanText(inst.Path), "Tab cycles detected installations", "")
 		}
-		for i, name := range actionNames {
-			lines = append(lines, m.row(i, name))
+		for i, id := range m.actions() {
+			lines = append(lines, m.row(i, actionName(id)))
 		}
 	case "options":
-		preset := "custom"
-		all := true
-		none := true
-		for _, cat := range categories {
-			all = all && m.req.Preserve[cat]
-			none = none && !m.req.Preserve[cat]
-		}
-		if all {
-			preset = "preserve all"
-		} else if none {
-			preset = "discard all"
-		} else if len(m.req.Preserve) == 1 && m.req.Preserve[auth] {
-			preset = "keep auth only"
-		}
-		items := []string{"Preset: " + preset, "Target version: " + m.req.Target + " (blank = latest, reinstall = current)", mark(m.req.Permanent) + " Permanent discard, erase recovery after completion"}
-		for _, cat := range categories {
-			items = append(items, mark(m.req.Preserve[cat])+" Preserve "+string(cat))
-		}
-		for _, owner := range m.owners {
-			items = append(items, mark(contains(m.req.Owners, owner))+" Include affected owner: "+owner)
+		var items []string
+		for _, row := range m.options() {
+			items = append(items, row.label)
 		}
 		lines = append(lines, m.listWindow(items)...)
 		hint = "Space toggle · v edit target · Enter preview · Esc home"
@@ -717,7 +828,17 @@ func (m tuiModel) View() tea.View {
 			lines = append(lines, "Editing version. Backspace deletes, Enter finishes.")
 		}
 	case "preview":
-		if m.p != nil {
+		if m.batchMode && m.batch != nil {
+			detail := []string{fmt.Sprintf("Batch: %d harnesses, one approval. Stops on failure.", len(m.batch.Plans))}
+			for _, p := range m.batch.Plans {
+				copy := m
+				copy.p = p
+				copy.height = 1 << 30
+				detail = append(detail, p.Spec.Name)
+				detail = append(detail, copy.previewLines()...)
+			}
+			lines = append(lines, m.scroll(detail)...)
+		} else if m.p != nil {
 			lines = append(lines, m.previewLines()...)
 		}
 		word := "apply"
@@ -771,24 +892,28 @@ func (m tuiModel) View() tea.View {
 		hint = "Type recover, Enter confirm · Esc cancel"
 	case "profile":
 		var items []string
-		for _, cat := range categories {
+		for _, cat := range m.optionCategories {
 			items = append(items, mark(m.profileDisabled[cat])+" Exclude "+string(cat)+" from this shim profile")
 		}
 		lines = append(lines, m.listWindow(items)...)
 		hint = "Space toggle · Enter preview · b return to base state · Esc home"
 	}
+	var footer []string
 	if m.typed != "" {
-		lines = append(lines, "", "> "+cleanText(m.typed))
+		footer = append(footer, "> "+cleanText(m.typed))
 	}
 	if m.status != "" {
-		lines = append(lines, "", cleanText(m.status))
+		footer = append(footer, cleanText(m.status))
 	}
-	lines = append(lines, "", hint)
-	view := tea.NewView(strings.Join(lines, "\n"))
+	footer = append(footer, hint)
+	footer = append(footer, m.monitorView()...)
+	view := tea.NewView(m.terminalContent(lines, footer))
 	view.AltScreen = true
 	return view
 }
 
+// row renders label with a cursor marker when index is selected, sanitizing
+// external text.
 func (m tuiModel) row(index int, label string) string {
 	prefix := "  "
 	if index == m.cursor {
@@ -796,8 +921,11 @@ func (m tuiModel) row(index int, label string) string {
 	}
 	return prefix + cleanText(label)
 }
+
+// listWindow returns visible rows from items around the selected cursor, with a
+// continuation hint when needed.
 func (m tuiModel) listWindow(items []string) []string {
-	height := m.height - 10
+	height := m.height - 12
 	if height < 4 {
 		height = 4
 	}
@@ -815,7 +943,11 @@ func (m tuiModel) listWindow(items []string) []string {
 	}
 	return out
 }
+
+// scroll returns the visible portion of lines bounded by cursor and terminal
+// height.
 func (m tuiModel) scroll(lines []string) []string {
+	lines = m.wrapRows(lines)
 	height := m.height - 10
 	if height < 4 {
 		height = 4
@@ -824,6 +956,9 @@ func (m tuiModel) scroll(lines []string) []string {
 	end := min(len(lines), start+height)
 	return lines[start:end]
 }
+
+// previewLines returns sanitized preview details for the current plan.
+// Component values remain hidden while paths and side effects stay reviewable.
 func (m tuiModel) previewLines() []string {
 	p := m.p
 	var lines []string
@@ -889,6 +1024,8 @@ func (m tuiModel) previewLines() []string {
 	}
 	return m.scroll(lines)
 }
+
+// categoryStrings returns string labels for cats in the supplied order.
 func categoryStrings(cats []category) []string {
 	var out []string
 	for _, cat := range cats {
@@ -897,8 +1034,10 @@ func categoryStrings(cats []category) []string {
 	return out
 }
 
+// runTUI runs the terminal program for e and routes termination signals through
+// cancellation/rollback. It returns terminal/runtime failures.
 func runTUI(e *engine) error {
-	program := tea.NewProgram(newModel(e), tea.WithoutSignalHandler())
+	program := newTUIProgram(newModel(e), tea.WithoutSignalHandler())
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(signals)

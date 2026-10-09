@@ -60,7 +60,8 @@ func TestSharedOwnerIsAnIndividualOption(t *testing.T) {
 	e, _ := testEngine(t)
 	m := newModel(e)
 	m.screen = "options"
-	m.req = request{Harness: "codex", Preserve: keepAll()}
+	m.req = request{Harness: "codex", Action: "update", Preserve: keepAll()}
+	m.optionCategories = categories
 	m.owners = []string{"Claude Code", "Codex desktop / IDE"}
 	m.cursor = 3 + len(categories)
 	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace, Text: " "})
@@ -74,6 +75,7 @@ func TestTUIOffersDedicatedComponentManagement(t *testing.T) {
 	e, _ := testEngine(t)
 	m := newModel(e)
 	m.screen = "actions"
+	m.installs = []installation{syntheticInstall(t, e, e.cfg.Harnesses[0], "1")}
 	if !strings.Contains(m.View().Content, "Manage components") {
 		t.Fatal("there is no dedicated component management action")
 	}
@@ -88,7 +90,7 @@ func TestTUIComponentNavigationOwnersAndApproval(t *testing.T) {
 		}
 	}
 	m.installs = []installation{inst}
-	m.screen, m.cursor = "actions", len(actionIDs)-1
+	m.screen, m.cursor = "actions", actionIndex(m, "manage")
 	model, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = model.(tuiModel)
 	if m.screen != "component-groups" || !strings.Contains(m.View().Content, "mcp") {

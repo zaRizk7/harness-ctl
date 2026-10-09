@@ -8,15 +8,19 @@ import (
 	"strings"
 )
 
+// claudePluginRegistration decodes native plugin scope and captured payload ownership.
 type claudePluginRegistration struct {
 	Scope       string `json:"scope"`
 	InstallPath string `json:"installPath"`
 }
 
+// claudePluginLedger decodes native plugin registrations for result verification.
 type claudePluginLedger struct {
 	Plugins map[string][]claudePluginRegistration `json:"plugins"`
 }
 
+// planNativeComponent adds the verified native plugin contract for change to p.
+// Unsupported formats, sources and scopes return errors.
 func (e *engine) planNativeComponent(p *plan, change componentRequest) error {
 	if change.Category != plugins || p.Install.ID == "" || p.Install.Method == "unknown" {
 		return fmt.Errorf("native installation requires a verified installed harness and a supported plugin contract")
@@ -67,6 +71,36 @@ func (e *engine) planNativeComponent(p *plan, change componentRequest) error {
 			}
 		}
 		args = []string{"plugin", operation, name, "--scope", "user"}
+	case "pi":
+		if operation != "install" && operation != "uninstall" {
+			return fmt.Errorf("Pi enable/disable and edits use the packages declaration in settings.json")
+		}
+		source := change.Source
+		if source == "" {
+			source = name
+		}
+		name = source
+		packageName, _, err := piPackageName(source)
+		if err != nil {
+			return err
+		}
+		payload := filepath.Join(p.StateRoot, "npm", "node_modules", filepath.FromSlash(packageName))
+		if err = validateOwnedPath(p.StateRoot, payload); err != nil {
+			return err
+		}
+		if operation == "uninstall" {
+			if _, err = fileIO.stat(payload); err != nil {
+				return fmt.Errorf("Pi package payload is not scoped here. External legacy/global packages must be removed natively")
+			}
+			if err = validateComponentTree(payload); err != nil {
+				return err
+			}
+			args = []string{"remove", source}
+		} else {
+			args = []string{"install", source}
+		}
+		p.Component.Request.Name = name
+		p.Component.Request.Source = source
 	case "gemini":
 		if filepath.Base(p.StateRoot) != ".gemini" {
 			return fmt.Errorf("Gemini native commands require a HOME containing the selected .gemini directory")
@@ -92,7 +126,7 @@ func (e *engine) planNativeComponent(p *plan, change componentRequest) error {
 		if err := validateOwnedPath(p.StateRoot, target); err != nil {
 			return err
 		}
-		if _, err := os.Lstat(target); err == nil {
+		if _, err := fileIO.lstat(target); err == nil {
 			if err := validateComponentTree(target); err != nil {
 				return err
 			}
@@ -136,6 +170,8 @@ func (e *engine) planNativeComponent(p *plan, change componentRequest) error {
 	return nil
 }
 
+// geminiExtensionDisabled returns name's user-scope disabled status from root's
+// native enablement rules. Missing rules mean enabled.
 func geminiExtensionDisabled(root, name string) (bool, error) {
 	path := filepath.Join(root, "extensions", "extension-enablement.json")
 	if err := validateOwnedPath(root, path); err != nil {
@@ -176,8 +212,20 @@ func (e *engine) verifyNativeComponent(p *plan) error {
 	}
 	removing := change.Operation == "remove"
 	disabling := change.Operation == "disable"
+	if change.Category == marketplaces {
+		if err := verifyMarketplace(p); err != nil {
+			return err
+		}
+	}
 	switch p.Spec.ID {
+	case "pi":
+		if err := verifyPiPackage(p.StateRoot, name, change.Operation); err != nil {
+			return err
+		}
 	case "claude":
+		if change.Category == marketplaces {
+			break
+		}
 		var ledger claudePluginLedger
 		file := filepath.Join(p.StateRoot, "plugins", "installed_plugins.json")
 		if err := validateOwnedPath(p.StateRoot, file); err != nil {
@@ -226,7 +274,7 @@ func (e *engine) verifyNativeComponent(p *plan) error {
 			return err
 		}
 		if removing {
-			if _, err := os.Lstat(path); !os.IsNotExist(err) {
+			if _, err := fileIO.lstat(path); !os.IsNotExist(err) {
 				return fmt.Errorf("native extension remains installed")
 			}
 		} else {
@@ -254,12 +302,12 @@ func (e *engine) verifyNativeComponent(p *plan) error {
 		values map[string]string
 	}{{p.Resources, before}, {current, after}} {
 		for _, r := range rs.items {
-			if r.Category == plugins || r.Category == cache {
+			if r.Category == marketplaces || r.Category == plugins || r.Category == cache {
 				continue
 			}
-			if len(r.Fields) > 0 {
+			if r.Format != "" {
 				for field, cat := range r.Fields {
-					if cat != plugins && cat != cache {
+					if cat != marketplaces && cat != plugins && cat != cache {
 						rs.values[r.Path+field] = r.FieldDigests[field]
 					}
 				}

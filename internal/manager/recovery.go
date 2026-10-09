@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// restoreApproved restores snapshot id after every shared owner is selected in
+// owners. It returns coordination, validation or recovery errors.
 func (e *engine) restoreApproved(ctx context.Context, id string, owners []string) error {
 	unlock, err := e.lock()
 	if err != nil {
@@ -44,8 +46,10 @@ func (e *engine) restoreApproved(ctx context.Context, id string, owners []string
 	return e.finishRecovery(r, nil)
 }
 
+// recoveryPlan returns a service/process coordination plan from authenticated
+// meta and current inventory, without changing state.
 func (e *engine) recoveryPlan(ctx context.Context, meta snapshotMeta) (*plan, error) {
-	s, err := specFor(meta.Harness)
+	s, err := e.specFor(meta.Harness)
 	if err != nil {
 		return nil, err
 	}
@@ -63,6 +67,8 @@ func (e *engine) recoveryPlan(ctx context.Context, meta snapshotMeta) (*plan, er
 	return &plan{Spec: s, Install: inst, Request: request{Harness: s.ID, Owners: s.SharedClients}}, nil
 }
 
+// finishRecovery restarts r's stopped services, records the final recovery
+// status and returns cause joined with any restart/journal failure.
 func (e *engine) finishRecovery(r operationRecord, cause error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(e.cfg.OperationSeconds)*time.Second)
 	defer cancel()
@@ -84,6 +90,8 @@ func (e *engine) finishRecovery(r operationRecord, cause error) error {
 	return cause
 }
 
+// recoverOperation recovers interrupted journal id using ctx. Settled,
+// mismatched or unrecoverable records return errors.
 func (e *engine) recoverOperation(ctx context.Context, id string) error {
 	unlock, err := e.lock()
 	if err != nil {

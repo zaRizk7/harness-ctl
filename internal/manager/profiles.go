@@ -2,11 +2,12 @@ package manager
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
 
+// createProfile creates a private state copy for inst with disabled categories
+// omitted. It requires managed ownership and returns copy/write failures.
 func (e *engine) createProfile(inst installation, disabled map[category]bool) error {
 	if !inst.Managed {
 		return fmt.Errorf("launch profiles require a managed installation. Migrate first")
@@ -21,15 +22,15 @@ func (e *engine) createProfile(inst installation, disabled map[category]bool) er
 		return err
 	}
 	parent := filepath.Dir(root)
-	if err := os.MkdirAll(parent, 0700); err != nil {
+	if err := fileIO.mkdir(parent, 0700); err != nil {
 		return err
 	}
-	stage, err := os.MkdirTemp(parent, ".profile-*")
+	stage, err := fileIO.mkdirTemp(parent, ".profile-*")
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(stage)
-	s, _ := specFor(inst.Harness)
+	defer fileIO.removeAll(stage)
+	s, _ := e.specFor(inst.Harness)
 	stateRoot := nativeStateRoot(s, stage)
 	copyEngine := *e
 	copyEngine.cfg.StateRoots = map[string]string{s.ID: inst.StateRoot}
@@ -68,7 +69,7 @@ func (e *engine) createProfile(inst installation, disabled map[category]bool) er
 			return err
 		}
 	}
-	if err = os.MkdirAll(stateRoot, 0700); err != nil {
+	if err = fileIO.mkdir(stateRoot, 0700); err != nil {
 		return err
 	}
 	if err = replaceTree(stage, root); err != nil {
@@ -78,6 +79,8 @@ func (e *engine) createProfile(inst installation, disabled map[category]bool) er
 	return nil
 }
 
+// disableProfile switches inst back to its base shim under the mutation lock,
+// retaining profile state for later recovery.
 func (e *engine) disableProfile(inst installation) error {
 	unlock, err := e.lock()
 	if err != nil {

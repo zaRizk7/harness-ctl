@@ -4,35 +4,41 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/zaRizk7/harness-ctl/internal/editor"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 )
 
+// componentsMsg returns item inventory for the selected category and state scope.
 type componentsMsg struct {
 	items  []componentItem
 	owners []string
 	err    error
 }
 
+// componentEditorMsg carries a validated edit and its source freshness check.
 type componentEditorMsg struct {
 	change    componentRequest
 	err       error
 	cancelled bool
 }
 
+// componentInstallation returns the selected installation identity for
+// component operations, including a state-only harness when absent.
 func (m tuiModel) componentInstallation() installation {
 	inst := m.selectedInst()
 	if inst.Harness == "" {
-		inst.Harness = catalog[m.harness].ID
+		inst = m.e.retainedInstallation(m.e.cfg.Harnesses[m.harness].ID)
 	}
 	return inst
 }
 
+// loadComponents returns a command collecting named entries and affected owners
+// for the selected category/scope.
 func (m tuiModel) loadComponents() tea.Cmd {
 	return func() tea.Msg {
 		inst := m.componentInstallation()
@@ -46,7 +52,7 @@ func (m tuiModel) loadComponents() tea.Cmd {
 			}
 		}
 		if m.componentScope != "profile" && !inst.Managed {
-			for _, owner := range catalog[m.harness].SharedClients {
+			for _, owner := range m.e.cfg.Harnesses[m.harness].SharedClients {
 				if !contains(owners, owner) {
 					owners = append(owners, owner)
 				}
@@ -56,11 +62,13 @@ func (m tuiModel) loadComponents() tea.Cmd {
 	}
 }
 
+// componentKey handles the category, item and owner control key. It returns
+// updated state and an optional preview/editor command.
 func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 	switch m.screen {
 	case "component-groups":
 		if key == "enter" {
-			m.componentCat = componentCategories[m.cursor]
+			m.componentCat = m.managementCategories()[m.cursor]
 			m.screen, m.status = "loading", "Reading selected component sources…"
 			return m, m.loadComponents()
 		}
@@ -121,7 +129,7 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				var files []componentItem
-				err := filepath.WalkDir(browsePath, func(path string, entry os.DirEntry, err error) error {
+				err := fileIO.walk(browsePath, func(path string, entry os.DirEntry, err error) error {
 					if err != nil {
 						return err
 					}
@@ -146,7 +154,7 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 			}
 			return m, m.editComponent(&item)
 		}
-		operation := map[string]string{"d": "disable", "u": "enable", "x": "remove"}[key]
+		operation := map[string]string{"d": "disable", "u": "enable", "x": "remove", "t": "update"}[key]
 		if key == "space" {
 			operation = "disable"
 			if item.Disabled {
@@ -158,7 +166,7 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 				m.status = "Disabled child files support editing. r returns to the component for enable/remove."
 				return m, nil
 			}
-			m.req.Component = &componentRequest{Operation: operation, Category: item.Category, Path: item.Path, Field: item.Field, Scope: m.componentScope, Parked: item.Parked, Native: item.Native, Name: item.Name}
+			m.req.Component = &componentRequest{Operation: operation, Category: item.Category, Path: item.Path, Field: item.Field, Scope: m.componentScope, Parked: item.Parked, Native: item.Native && !(m.req.Harness == "pi" && (operation == "disable" || operation == "enable")), Name: item.Name}
 			m.screen, m.status = "loading", "Creating a component preview…"
 			return m, m.preview()
 		}
@@ -166,12 +174,14 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// componentView returns secret-free component rows and owner/source metadata
+// for the active component screen.
 func (m tuiModel) componentView() []string {
 	lines := []string{"Component management / " + m.componentScope + " state"}
 	switch m.screen {
 	case "component-groups":
 		var groups []string
-		for _, cat := range componentCategories {
+		for _, cat := range m.managementCategories() {
 			groups = append(groups, string(cat))
 		}
 		lines = append(lines, m.listWindow(groups)...)
@@ -203,12 +213,21 @@ func (m tuiModel) componentView() []string {
 			if m.cursor < len(m.componentItems) {
 				item := m.componentItems[m.cursor]
 				lines = append(lines, "", "Source: "+item.Path, "Field: "+item.Field, "Owners: "+strings.Join(item.Owners, ", "))
+				if item.Category == plugins {
+					compatibility := strings.Join(item.BuiltFor, ", ")
+					if compatibility == "" {
+						compatibility = "unverified local asset"
+					}
+					lines = append(lines, "Built for: "+compatibility)
+				}
 			}
 		}
 	}
 	return lines
 }
 
+// addComponentTemplate returns a scoped request template for the selected
+// native category, without creating or installing an asset.
 func (m tuiModel) addComponentTemplate() componentRequest {
 	inst := m.componentInstallation()
 	state, s, err := m.e.componentEngine(inst, m.componentScope)
@@ -217,6 +236,12 @@ func (m tuiModel) addComponentTemplate() componentRequest {
 	}
 	root := state.stateRoot(s)
 	change := componentRequest{Operation: "add", Category: m.componentCat, Scope: m.componentScope}
+	if m.componentCat == marketplaces {
+		change.Native = true
+		change.Name = "my-marketplace"
+		change.Source = "owner/repository"
+		return change
+	}
 	if m.componentCat == skills {
 		if s.ID == "codex" {
 			root = state.codexSkillsRoot()
@@ -224,8 +249,12 @@ func (m tuiModel) addComponentTemplate() componentRequest {
 		change.Operation, change.Path, change.Source = "install", filepath.Join(root, "skills", "my-skill"), "/absolute/path/to/skill"
 		return change
 	}
-	if m.componentCat == plugins && (s.ID == "claude" || s.ID == "gemini") && inst.ID != "" {
+	if m.componentCat == plugins && (s.ID == "claude" || s.ID == "gemini" || s.ID == "pi") && inst.ID != "" {
 		change.Operation, change.Native, change.Source = "install", true, "plugin-name@marketplace"
+		if s.ID == "pi" {
+			change.Source = "npm:@example/pi-tools@1.0.0"
+			change.Name = change.Source
+		}
 		if s.ID == "gemini" {
 			change.Source = "/absolute/path/to/extension"
 			change.Name = "my-extension"
@@ -291,13 +320,15 @@ func (m tuiModel) addComponentTemplate() componentRequest {
 	return change
 }
 
+// editComponent opens a private external editor for item or a new request when
+// item is nil. Its command reports validated changes or cancellation.
 func (m tuiModel) editComponent(item *componentItem) tea.Cmd {
 	var data []byte
 	var err error
 	change := m.addComponentTemplate()
 	before := ""
 	if item == nil {
-		data, err = json.MarshalIndent(change, "", "  ")
+		data, err = marshalJSONIndent(change, "", "  ")
 	} else {
 		change = componentRequest{Operation: "edit", Category: item.Category, Path: item.Path, Field: item.Field, Scope: m.componentScope, Parked: item.Parked, Subpath: item.Subpath}
 		before, err = componentEditFingerprint(*item)
@@ -321,33 +352,13 @@ func (m tuiModel) editComponent(item *componentItem) tea.Cmd {
 			extension = filepath.Ext(item.Subpath)
 		}
 	}
-	file, err := os.CreateTemp("", "harness-ctl-component-*"+extension)
-	if err != nil {
-		return func() tea.Msg { return componentEditorMsg{err: err} }
-	}
-	path := file.Name()
-	if _, err = file.Write(data); err != nil {
-		file.Close()
-		os.Remove(path)
-		return func() tea.Msg { return componentEditorMsg{err: err} }
-	}
-	if err = file.Close(); err != nil {
-		os.Remove(path)
-		return func() tea.Msg { return componentEditorMsg{err: err} }
-	}
-	editor := os.Getenv("VISUAL")
-	if editor == "" {
-		editor = os.Getenv("EDITOR")
-	}
-	if editor == "" {
-		editor = "vi"
-	}
-	command := exec.Command("/bin/sh", "-c", editor+" "+shellQuote(path))
-	return tea.ExecProcess(command, func(editorErr error) tea.Msg {
+	return editor.Open("harness-ctl-component-*"+extension, data, func(path string, editorErr error) tea.Msg {
 		return m.finishComponentEdit(path, data, change, item, before, editorErr)
 	})
 }
 
+// componentEditFingerprint returns the active/parked source fingerprint for
+// item, so editing cannot silently overwrite a newer source.
 func componentEditFingerprint(item componentItem) (string, error) {
 	path := item.Path
 	if item.Parked != "" {
@@ -359,11 +370,11 @@ func componentEditFingerprint(item componentItem) (string, error) {
 // finishComponentEdit validates the external editor result and always removes
 // its private temporary file, including cancellation and validation failures.
 func (m tuiModel) finishComponentEdit(path string, data []byte, change componentRequest, item *componentItem, before string, editorErr error) componentEditorMsg {
-	defer os.Remove(path)
+	defer fileIO.remove(path)
 	if editorErr != nil {
 		return componentEditorMsg{err: fmt.Errorf("editor failed: %w", editorErr)}
 	}
-	file, err := os.Open(path)
+	file, err := fileIO.open(path)
 	if err != nil {
 		return componentEditorMsg{err: err}
 	}

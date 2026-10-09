@@ -1,13 +1,16 @@
 GO := go
 export GOTOOLCHAIN := local
 
-.PHONY: build check run tidy hooks
+.PHONY: build check coverage run tidy hooks
 build:
 	mkdir -p bin
 	$(GO) build -trimpath -o bin/harness-ctl ./cmd/harness-ctl
 
 check:
 	./scripts/check-go.sh
+
+coverage:
+	./scripts/coverage-go.sh
 
 run: build
 	./bin/harness-ctl

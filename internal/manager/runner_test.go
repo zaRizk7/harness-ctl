@@ -2,11 +2,25 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestCancellationAfterInstallerGroupExited(t *testing.T) {
+	cmd := exec.Command("/usr/bin/true")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stopProcessGroup(cmd.Process.Pid); !errors.Is(err, os.ErrProcessDone) {
+		t.Fatal(err)
+	}
+}
 
 func TestCancellationStopsInstallerChildrenBeforeReturning(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "late-write")

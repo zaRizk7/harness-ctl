@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/zaRizk7/harness-ctl/internal/providers"
+	"github.com/zaRizk7/harness-ctl/internal/stateconfig"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,46 +14,78 @@ import (
 	"time"
 )
 
-type category string
+// category is the shared state classification protocol used by transactions.
+type category = stateconfig.Category
 
 const (
-	auth       category = "auth"
-	settings   category = "settings"
-	skills     category = "skills"
-	plugins    category = "plugins"
-	connectors category = "connectors"
-	mcp        category = "mcp"
-	hooks      category = "hooks"
-	proxies    category = "proxies"
-	history    category = "history"
-	memory     category = "memory"
-	cache      category = "cache"
-	other      category = "other"
+	auth         = stateconfig.Auth
+	settings     = stateconfig.Settings
+	skills       = stateconfig.Skills
+	plugins      = stateconfig.Plugins
+	marketplaces = stateconfig.Marketplaces
+	connectors   = stateconfig.Connectors
+	mcp          = stateconfig.MCP
+	hooks        = stateconfig.Hooks
+	proxies      = stateconfig.Proxies
+	history      = stateconfig.History
+	memory       = stateconfig.Memory
+	cache        = stateconfig.Cache
+	other        = stateconfig.Other
 )
 
-var categories = []category{auth, settings, skills, plugins, connectors, mcp, hooks, proxies, history, memory, cache, other}
+var categories = stateconfig.Categories
 
+// config holds user-configurable paths, limits and native adapter contracts.
+// Defaults are provided by defaultConfig and validated before engine creation.
 type config struct {
-	Root             string            `json:"root"`
-	BinDir           string            `json:"bin_dir"`
-	Home             string            `json:"home"`
-	BackupDays       int               `json:"backup_days"`
-	ProbeSeconds     int               `json:"probe_seconds"`
-	OperationSeconds int               `json:"operation_seconds"`
-	MaxSnapshotBytes int64             `json:"max_snapshot_bytes"`
-	ReleaseChannel   string            `json:"release_channel"`
-	StateRoots       map[string]string `json:"state_roots"`
-	MetadataBytes    int64             `json:"metadata_bytes"`
-	InstallerBytes   int64             `json:"installer_bytes"`
-	PackageBytes     int64             `json:"package_bytes"`
+	Providers          []providerSpec    `json:"providers"`
+	MonitorWindowDays  int               `json:"monitor_window_days"`
+	MonitorMaxPages    int               `json:"monitor_max_pages"`
+	CatalogFile        string            `json:"catalog_file,omitempty"`
+	Harnesses          []harnessSpec     `json:"harnesses"`
+	AdditionalCommands []string          `json:"additional_commands"`
+	RefreshSeconds     int               `json:"refresh_seconds"`
+	Root               string            `json:"root"`
+	BinDir             string            `json:"bin_dir"`
+	Home               string            `json:"home"`
+	BackupDays         int               `json:"backup_days"`
+	ProbeSeconds       int               `json:"probe_seconds"`
+	OperationSeconds   int               `json:"operation_seconds"`
+	MaxSnapshotBytes   int64             `json:"max_snapshot_bytes"`
+	ReleaseChannel     string            `json:"release_channel"`
+	StateRoots         map[string]string `json:"state_roots"`
+	MetadataBytes      int64             `json:"metadata_bytes"`
+	InstallerBytes     int64             `json:"installer_bytes"`
+	PackageBytes       int64             `json:"package_bytes"`
 }
 
+// defaultConfig returns independent documented defaults for home. Call validate
+// before using paths or configurable contracts.
 func defaultConfig(home string) config {
 	root := filepath.Join(home, "Library", "Application Support", "harness-ctl")
-	return config{Root: root, BinDir: filepath.Join(root, "bin"), Home: home, BackupDays: 7, ProbeSeconds: 8, OperationSeconds: 1800, MaxSnapshotBytes: 4 << 30, MetadataBytes: 8 << 20, InstallerBytes: 4 << 20, PackageBytes: 512 << 20, ReleaseChannel: "stable", StateRoots: map[string]string{}}
+	return config{Providers: defaultProviders(), MonitorWindowDays: 30, MonitorMaxPages: 100, Harnesses: defaultCatalog(), AdditionalCommands: []string{"amp", "aider", "droid", "cursor-agent", "goose", "qwen", "vibe", "kilo", "cline", "crush"}, RefreshSeconds: 5, Root: root, BinDir: filepath.Join(root, "bin"), Home: home, BackupDays: 7, ProbeSeconds: 8, OperationSeconds: 1800, MaxSnapshotBytes: 4 << 30, MetadataBytes: 8 << 20, InstallerBytes: 4 << 20, PackageBytes: 512 << 20, ReleaseChannel: "stable", StateRoots: map[string]string{}}
 }
 
+// validate checks configured storage, catalog and account boundaries. Unsafe
+// paths, unsupported values and nonpositive limits return errors.
 func (c config) validate() error {
+	if err := validateProviders(c.Providers); err != nil {
+		return err
+	}
+	if c.MonitorWindowDays < 1 || c.MonitorMaxPages < 1 {
+		return fmt.Errorf("monitor window and page limit must be positive")
+	}
+	if err := validateCatalog(c.Harnesses); err != nil {
+		return err
+	}
+	if c.RefreshSeconds < 1 {
+		return fmt.Errorf("refresh_seconds must be positive")
+	}
+	for _, command := range c.AdditionalCommands {
+		if !targetPattern.MatchString(command) {
+			return fmt.Errorf("invalid additional command")
+		}
+	}
 	for _, p := range []string{c.Root, c.BinDir, c.Home} {
 		if !filepath.IsAbs(p) || filepath.Clean(p) == "/" {
 			return fmt.Errorf("configured directories must be absolute and cannot be /")
@@ -83,6 +117,8 @@ func (c config) validate() error {
 	return nil
 }
 
+// command describes a native process, including arguments, working directory
+// and environment overrides. Descriptions label operations without exposing secrets.
 type command struct {
 	Path        string
 	Args        []string
@@ -90,12 +126,19 @@ type command struct {
 	Dir         string
 	Description string
 }
+
+// runner is the native-command boundary used by adapters and synthetic tests.
 type runner interface {
 	Run(context.Context, command) (string, error)
 }
+
+// systemRunner executes local processes and kills installer process groups on cancellation.
 type systemRunner struct{}
 
-// Run executes a native adapter command with the supplied deadline and local Go policy.
+// Run executes c.Path with c.Args, c.Dir and environment overrides under ctx's
+// deadline and local Go policy. It returns combined stdout/stderr, including on
+// failure, and wraps execution errors with c.Description. Cancellation stops the
+// process group before returning so installers cannot write after rollback.
 func (systemRunner) Run(ctx context.Context, c command) (string, error) {
 	cmd := exec.CommandContext(ctx, c.Path, c.Args...)
 	cmd.Dir = c.Dir
@@ -103,11 +146,7 @@ func (systemRunner) Run(ctx context.Context, c command) (string, error) {
 	// has stopped, otherwise a child can overwrite the restored state.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {
-		err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		if errors.Is(err, syscall.ESRCH) {
-			return os.ErrProcessDone
-		}
-		return err
+		return stopProcessGroup(cmd.Process.Pid)
 	}
 	env := map[string]string{}
 	for _, pair := range os.Environ() {
@@ -135,22 +174,18 @@ func (systemRunner) Run(ctx context.Context, c command) (string, error) {
 	return string(data), nil
 }
 
-type harnessSpec struct {
-	ID             string
-	Name           string
-	Command        string
-	Package        string
-	LegacyPackages []string
-	BrewPackages   []string
-	HomeEnv        string
-	DefaultHome    string
-	Kind           string
-	Docs           string
-	ConfigFiles    []string
-	SharedClients  []string
-	LaunchLabels   []string
+// stopProcessGroup stops an installer's children before rollback. A process
+// group that has already exited uses the native command cancellation sentinel.
+func stopProcessGroup(pid int) error {
+	err := syscall.Kill(-pid, syscall.SIGKILL)
+	if errors.Is(err, syscall.ESRCH) {
+		return os.ErrProcessDone
+	}
+	return err
 }
 
+// installation records a discovered executable and its verified payload/state
+// ownership. Managed identifies isolated prefixes owned by this manager.
 type installation struct {
 	ID           string   `json:"id"`
 	Harness      string   `json:"harness"`
@@ -166,15 +201,20 @@ type installation struct {
 	StateRoot    string   `json:"state_root,omitempty"`
 }
 
+// registry records managed installs and per-installation launch profiles.
 type registry struct {
 	Installs []installation     `json:"installations"`
 	Profiles map[string]profile `json:"profiles"`
 }
+
+// profile selects a private state copy and its excluded categories for a shim.
 type profile struct {
 	Disabled map[category]bool `json:"disabled"`
 	Root     string            `json:"root"`
 }
 
+// resource binds a concrete state path to owners, categories and preview
+// fingerprints. Fields classify independently editable structured settings.
 type resource struct {
 	Path         string              `json:"path"`
 	Root         string              `json:"root"`
@@ -188,6 +228,8 @@ type resource struct {
 	Note         string              `json:"note,omitempty"`
 }
 
+// request contains a lifecycle action and the selected preservation, owner
+// and source-profile controls. It is input to read-only plan construction.
 type request struct {
 	Harness   string
 	InstallID string
@@ -202,6 +244,8 @@ type request struct {
 	Component *componentRequest
 }
 
+// plan is a previewed transaction with native commands, resource fingerprints
+// and blockers. Execution revalidates it under the mutation lock.
 type plan struct {
 	ID                 string
 	Created            time.Time
@@ -225,6 +269,8 @@ type plan struct {
 	Component          *componentMutation
 }
 
+// operationRecord journals transaction progress and rollback coordinates.
+// Unsettled records prevent a new mutation until recovery completes.
 type operationRecord struct {
 	ID          string    `json:"id"`
 	Harness     string    `json:"harness"`
@@ -238,20 +284,43 @@ type operationRecord struct {
 	Destination string    `json:"destination,omitempty"`
 }
 
+// engine owns configuration, registry, native boundaries and transactional state.
+// Scoped copies share reporting cooldowns and retain the same storage ownership.
 type engine struct {
-	cfg       config
-	run       runner
-	reg       registry
-	statePath string
-	client    httpClient
-	keys      keyStore
+	cfg           config
+	run           runner
+	reg           registry
+	statePath     string
+	client        httpClient
+	accountClient httpClient
+	keys          keyStore
+	reports       *providers.Reporter
 }
 
+// newEngine returns a read-only engine configured by c with command runner r.
+// Invalid configuration or registry ownership returns an error.
 func newEngine(c config, r runner) (*engine, error) {
+	if c.CatalogFile == "" {
+		path := filepath.Join(c.Root, "catalog.json")
+		if _, err := fileIO.lstat(path); err == nil {
+			c.CatalogFile = path
+		} else if !os.IsNotExist(err) {
+			return nil, err
+		}
+	}
+	if c.CatalogFile != "" {
+		if err := rejectLinkedAncestors(c.CatalogFile); err != nil {
+			return nil, err
+		}
+		if err := readJSON(c.CatalogFile, &c.Harnesses); err != nil {
+			return nil, err
+		}
+	}
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
-	e := &engine{cfg: c, run: r, statePath: filepath.Join(c.Root, "registry.json"), keys: keychainStore{}, client: newHTTPClient(c)}
+	c.Harnesses = normalizeCatalog(c.Harnesses)
+	e := &engine{cfg: c, run: r, statePath: filepath.Join(c.Root, "registry.json"), keys: newKeychainStore(), client: newHTTPClient(c), accountClient: newAccountClient(c), reports: providers.New()}
 	if err := validateOwnedPath(c.Root, e.statePath); err != nil {
 		return nil, err
 	}
@@ -268,6 +337,7 @@ func newEngine(c config, r runner) (*engine, error) {
 	return e, nil
 }
 
+// keepAll returns a new preservation map containing every state category.
 func keepAll() map[category]bool {
 	m := map[category]bool{}
 	for _, c := range categories {
@@ -275,6 +345,8 @@ func keepAll() map[category]bool {
 	}
 	return m
 }
+
+// contains reports whether xs includes x using exact string equality.
 func contains(xs []string, x string) bool {
 	for _, v := range xs {
 		if v == x {
@@ -283,6 +355,9 @@ func contains(xs []string, x string) bool {
 	}
 	return false
 }
+
+// shortID returns a compact prefix of s for display. Approval always uses the
+// complete identity.
 func shortID(s string) string {
 	if len(s) > 12 {
 		return s[:12]

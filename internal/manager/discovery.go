@@ -15,11 +15,15 @@ import (
 
 var versionPattern = regexp.MustCompile(`\b[vV]?\d+\.\d+(?:\.\d+)?(?:[-+][0-9A-Za-z._-]+)?\b`)
 
+// installID returns a stable identity from harness and executable path. It
+// contains no state values.
 func installID(harness, path string) string {
 	sum := sha256.Sum256([]byte(harness + "\x00" + path))
 	return harness + "-" + hex.EncodeToString(sum[:6])
 }
 
+// commandPaths returns distinct executable paths for name from absolute PATH
+// entries. Relative entries are ignored.
 func commandPaths(name string) []string {
 	var paths []string
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
@@ -27,7 +31,7 @@ func commandPaths(name string) []string {
 			continue
 		}
 		p := filepath.Join(dir, name)
-		info, err := os.Stat(p)
+		info, err := fileIO.stat(p)
 		if err == nil && !info.IsDir() && info.Mode()&0111 != 0 && !contains(paths, p) {
 			paths = append(paths, p)
 		}
@@ -35,13 +39,18 @@ func commandPaths(name string) []string {
 	return paths
 }
 
+// discover returns metadata-verified installations using ctx for probes. It
+// never executes harness help/version or writes user state.
 func (e *engine) discover(ctx context.Context) ([]installation, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	var found []installation
-	for _, s := range catalog {
+	for _, s := range e.cfg.Harnesses {
 		paths := commandPaths(s.Command)
 		// Common user-local launchers can be installed but absent from PATH.
 		for _, p := range []string{filepath.Join(e.cfg.Home, ".local/bin", s.Command), filepath.Join(e.cfg.BinDir, s.Command)} {
-			if info, err := os.Stat(p); err == nil && info.Mode()&0111 != 0 && !info.IsDir() && !contains(paths, p) {
+			if info, err := fileIO.stat(p); err == nil && info.Mode()&0111 != 0 && !info.IsDir() && !contains(paths, p) {
 				paths = append(paths, p)
 			}
 		}
@@ -49,7 +58,7 @@ func (e *engine) discover(ctx context.Context) ([]installation, error) {
 			if within(e.cfg.BinDir, p) {
 				continue
 			} // A shim must never be probed recursively.
-			resolved, err := filepath.EvalSymlinks(p)
+			resolved, err := fileIO.eval(p)
 			if err != nil {
 				continue
 			}
@@ -102,7 +111,7 @@ func (e *engine) discover(ctx context.Context) ([]installation, error) {
 			}
 		}
 	}
-	for _, name := range additionalCommands {
+	for _, name := range e.cfg.AdditionalCommands {
 		for _, path := range commandPaths(name) {
 			found = append(found, installation{ID: installID(name, path), Harness: name, Path: path, Method: "unsupported", Version: "unknown", Note: "Detected additional harness. A tested adapter is required."})
 		}
@@ -110,6 +119,8 @@ func (e *engine) discover(ctx context.Context) ([]installation, error) {
 	return found, nil
 }
 
+// identify fills inst ownership and version using s and resolved executable
+// metadata. Unknown ownership remains unclaimed.
 func (e *engine) identify(s harnessSpec, resolved string, inst *installation) {
 	// npm ownership comes from the package manifest, never from a command name.
 	p := filepath.Dir(resolved)
@@ -118,7 +129,7 @@ func (e *engine) identify(s harnessSpec, resolved string, inst *installation) {
 			Name    string `json:"name"`
 			Version string `json:"version"`
 		}
-		if data, err := os.ReadFile(filepath.Join(p, "package.json")); err == nil && json.Unmarshal(data, &manifest) == nil && (manifest.Name == s.Package || contains(s.LegacyPackages, manifest.Name)) && strings.HasSuffix(p, "/lib/node_modules/"+manifest.Name) {
+		if data, err := fileIO.readFile(filepath.Join(p, "package.json")); err == nil && json.Unmarshal(data, &manifest) == nil && (manifest.Name == s.Package || contains(s.LegacyPackages, manifest.Name)) && strings.HasSuffix(p, "/lib/node_modules/"+manifest.Name) {
 			inst.Method = "npm"
 			inst.Root = p
 			inst.Package = manifest.Name
@@ -167,8 +178,8 @@ func (e *engine) identify(s harnessSpec, resolved string, inst *installation) {
 	}
 	if s.ID == "hermes" {
 		root := filepath.Join(e.stateRoot(s), "hermes-agent")
-		if info, err := os.Stat(filepath.Join(root, "pyproject.toml")); err == nil && !info.IsDir() {
-			data, err := os.ReadFile(inst.Path)
+		if info, err := fileIO.stat(filepath.Join(root, "pyproject.toml")); err == nil && !info.IsDir() {
+			data, err := fileIO.readFile(inst.Path)
 			if err == nil && len(data) < 16384 && strings.Contains(string(data), root) {
 				inst.Method = "native-hermes"
 				inst.Root = root
@@ -178,17 +189,21 @@ func (e *engine) identify(s harnessSpec, resolved string, inst *installation) {
 	}
 }
 
+// servicePaths returns existing user LaunchAgent paths bound to s by its
+// configured labels.
 func (e *engine) servicePaths(s harnessSpec) []string {
 	var paths []string
 	for _, label := range s.LaunchLabels {
 		p := filepath.Join(e.cfg.Home, "Library/LaunchAgents", label+".plist")
-		if _, err := os.Lstat(p); err == nil {
+		if _, err := fileIO.lstat(p); err == nil {
 			paths = append(paths, p)
 		}
 	}
 	return paths
 }
 
+// lookPath resolves name to an executable path or returns the native lookup
+// error.
 func lookPath(name string) (string, error) {
 	p, err := exec.LookPath(name)
 	if err != nil {
