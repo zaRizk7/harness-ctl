@@ -43,6 +43,7 @@ The manager does not download an MCP executable merely because you register it.
 | `native` | Use a verified native plugin command when `true` |
 | `name` | Plugin identifier or expected Gemini extension name |
 | `scope` | `base` or `profile`, fixed to the screen's current selection |
+| `built_for` | Optional array of compatible harness IDs, checked before import |
 
 For a Codex MCP registration, replace the example destination with the path
 shown by the selected installation. (Local workspace, 2026)
@@ -77,6 +78,30 @@ marketplace. Gemini extensions use a repository URL or local directory, plus
 the expected name from `gemini-extension.json`. The preview includes the exact
 native command. (Anthropic, 2026. Google, 2026. Local workspace, 2026)
 
+Pi packages use their own native `pi install` and `pi remove` adapter. Verified
+native sources use `npm:`, optionally pinned to an exact version. Registration
+and the scoped package manifest are verified after installation. Pi enable,
+disable and edit operate on its local package declarations. Native Git/local
+install side effects are unsupported. Import local assets into Pi's selected
+state instead. (Pi contributors, 2026; Local workspace, 2026)
+
+```json
+{
+  "operation": "install",
+  "category": "plugins",
+  "native": true,
+  "source": "npm:@example/pi-tools@1.0.0",
+  "name": "npm:@example/pi-tools@1.0.0",
+  "built_for": ["pi"]
+}
+```
+
+Native registrations identify their owning harness. Local assets use detected
+Pi, Claude or Gemini manifests. Imports reject a mismatched manifest or
+`built_for` declaration. An unknown local format is labelled unverified, rather
+than assigned compatibility from its directory alone. Compatibility identifies
+a loader contract and does not establish a plugin's license. (Local workspace, 2026)
+
 ```json
 {
   "operation": "install",
@@ -109,7 +134,7 @@ contain symlinks. Executable file modes survive editing. (Local workspace, 2026)
 | Claude Code | User MCP/settings entries, skills, native user-scope plugin install/enable/disable/remove, local assets |
 | Gemini CLI | MCP/settings entries, skills, native user-scope extension install/enable/disable/remove, editable extension files |
 | OpenCode | JSON MCP entries and their `enabled` flags, plugin array entries, local assets |
-| Pi | Existing settings registrations and local skills/extensions/assets |
+| Pi | Native npm package install/remove, local package edit/enable/disable, skills/extensions/assets |
 | Hermes Agent | Existing YAML registrations and local assets |
 | OpenClaw | Existing JSON registrations and local assets |
 | Prime Agent | Existing JSON/TOML registrations and local assets |
@@ -164,6 +189,43 @@ stores and external side effects cannot be reversed by those snapshots. Vendor
 version compatibility, live account connections and real native installers have
 not been exercised by this repository's synthetic tests. (Local workspace, 2026)
 
+## Marketplaces and native additions
+
+The supported marketplace screen inventories the native local registry on each
+refresh. It lists names without source credentials. Add requires a source and
+expected marketplace name, `t` refreshes the selected catalog, `e` edits its
+source through a native remove/add preview, and `x` removes its user-scope
+declaration. There is no verified native marketplace enable/disable command.
+Other harnesses hide this category. (Local workspace, 2026)
+
+```sh
+harness-ctl components list claude marketplaces
+harness-ctl components apply --preview claude marketplace.json
+harness-ctl components apply claude marketplace.json
+```
+
+```json
+{
+  "operation": "add",
+  "category": "marketplaces",
+  "native": true,
+  "name": "my-marketplace",
+  "source": "owner/repository"
+}
+```
+
+Marketplace removal/source editing can uninstall dependent plugins and erase
+saved local plugin data. The preview captures the selected plugin tree for
+recovery, requires affected-owner selection, and refuses external cache/payload
+ownership. Remote account catalogs and external effects retain native limits.
+(Anthropic, 2026; Local workspace, 2026)
+
+Plugin inventory also merges native installed-plugin ledgers with enablement
+settings, so manually installed disabled plugins remain visible. Native manifests
+identify proprietary compatibility. Mods install as plugins and use the same
+harness-specific controls. Unknown local formats are labelled unverified.
+(Anthropic, 2026; Local workspace, 2026)
+
 ## References
 
 - Local workspace (2026). [Component engine](../internal/manager/components.go),
@@ -177,3 +239,5 @@ not been exercised by this repository's synthetic tests. (Local workspace, 2026)
 - Google (2026). [Extension reference](https://geminicli.com/docs/extensions/reference/),
   [enablement implementation](https://github.com/google-gemini/gemini-cli/blob/main/packages/cli/src/config/extensions/extensionEnablement.ts).
 - OpenCode (2026). [MCP servers](https://opencode.ai/docs/mcp-servers/).
+- Pi contributors (2026). [Packages](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md).
+- Anthropic (2026). [Mods](https://code.claude.com/docs/en/plugins/mods/overview).

@@ -1,8 +1,8 @@
-# Codex instructions for harness-ctl
+# Repository instructions for harness-ctl
 
 ## Scope and ownership
 
-- Read the accepted behavior and checkpoint in `IMPLEMENTATION.md`, then relevant
+- Read the accepted behavior and checkpoint in `docs/implementation.md`, then relevant
   code, callers and tests. Implement the user's requested behavior and stop after
   verification. Report missing acceptance criteria instead of claiming completion.
 - Extend the layer that owns the invariant. Harness contracts belong in adapters,
@@ -21,22 +21,23 @@
 - Repository skills live in `.agents/skills/`. Load `code-quality` before code
   changes and `test-first` for behavior changes. Select other skills by their
   descriptions and load only relevant supporting resources.
-- `.agents/roles/` contains portable role briefs for an explicitly requested
-  delegated workflow. They are documentation, not native Codex agent definitions.
-  Use the current host's tools and configured model. Do not assume Claude tool
-  names, model aliases, preloaded skills or automatic worktree isolation.
+- Project-scoped native subagent configurations live in `.codex/agents/`.
+  They inherit the current model unless the user requests an override. Load
+  named skills explicitly and respect the host's permissions and isolation.
 - Use `orchestrator` only when the user explicitly requests orchestration.
   Otherwise work directly. Moving documentation does not authorize delegation.
-- Reorganise agent material to suit Codex and this macOS TUI. Preserve the pinned
+- Agent instructions stay model and harness agnostic. Preserve the pinned
   directive policies and hook enforcement, update references, and keep one source
-  per rule. Do not modify global Codex configuration as part of a repository edit.
+  per rule. Repository edits never change global agent configuration.
 
 ## Documentation and verification
 
-- `README.md` explains installation, controls and user-visible limitations.
+- `README.md` is the project summary. Operator and developer documents live in
+  `docs/`. Licenses and this primary directive remain at the repository root.
   `docs/architecture.md` explains code ownership and transaction invariants.
-  `IMPLEMENTATION.md` is the acceptance record and resumable checkpoint.
-- Document public Go APIs and non-obvious trust boundaries. When behavior changes,
+  `docs/implementation.md` is the acceptance record and resumable checkpoint.
+- Document Go packages, types and functions with standard comments explaining
+  arguments, results and non-obvious trust boundaries. When behavior changes,
   update the relevant user guide and its acceptance evidence in the same change.
 - Run `make check` and the configured Git hooks. Install missing hooks with
   `make hooks`. Never weaken or bypass a check. Keep commits atomic and omit

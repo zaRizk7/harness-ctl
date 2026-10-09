@@ -9,7 +9,7 @@ Apply this workflow only after the user explicitly requests orchestration.
 
 ## Roles and scope
 - Plan, delegate, review, challenge claims, resolve conflicts and escalate. Delegate implementation and review. Do not edit product code in the primary checkout.
-- Roles: implementer, tester, reviewer, investigator, architect. Read the matching brief in `.agents/roles/`. Use the host's available agent tools and current configured model unless the user requests an override. Role briefs do not configure native agents or preload skills.
+- Roles: implementer, tester, reviewer, investigator, architect. Read the matching native configuration in `.codex/agents/`. Use the host's available agent tools and current configured model unless the user requests an override. Agent configurations inherit model settings and require explicit skill loading.
 - Goals come only from the user. When the assigned goals close, report and stop. Propose follow-ups without starting them.
 - Before dispatch, use `interview` when decisions are unresolved, then `goal-spec` and `task-breakdown`. Honor decisions and authorization already given.
 - Every goal has a spec in the project's existing location. Each acceptance criterion maps to an existing test seam or a justified manual check.

@@ -8,16 +8,23 @@ recovery. Adapters supply native contracts instead of a universal harness loop.
 | Layer | Code | Responsibility |
 | --- | --- | --- |
 | Entry and configuration | `cmd/harness-ctl/main.go`, `internal/manager/cli.go`, `types.go` | Parse options, validate storage, use the installed Go policy |
-| Adapter contracts | `catalog.go`, `discovery.go`, `plan.go` | Native state roots, verified install identity, lifecycle recipes |
-| State inventory | `state.go`, `safety.go` | Classify files/fields, identify owners, reject linked paths, fingerprint previews |
-| Component management | `components.go`, `components_native.go` | Item inventory, pointer/asset changes, disabled records, native plugin contracts and result verification |
+| Adapter contracts | `internal/catalog/`, `catalog.go`, `discovery.go`, `plan.go` | Validated configurable catalog, native state roots, verified install identity, lifecycle recipes |
+| State inventory | `state.go`, `internal/stateconfig/`, `internal/storage/` | Classify files/fields, identify owners, reject linked paths, fingerprint previews |
+| Component management | `internal/component/`, `components.go`, `components_native.go`, `marketplaces.go`, `compatibility.go` | Item inventory, pointer/asset changes, disabled records, harness-specific plugin contracts and result verification |
 | Transaction | `execution.go`, `services.go` | Serialize mutations, coordinate owned services, snapshot, execute, verify and roll back |
-| Recovery | `snapshot.go`, `recovery.go` | Keychain identity, authenticated age archives, validated restoration and retention |
+| Recovery | `snapshot.go`, `archive_platform.go`, `recovery.go` | Keychain identity, authenticated age archives, validated restoration and retention |
 | Launch profiles | `profiles.go`, `registry.go` | Copy scoped state, preserve profile writes and generate managed shims |
-| User interface | `tui.go`, `components_tui.go` | Screen transitions, external editor validation, owner/scope controls, typed approval and cancellation |
-| Package transport | `http.go`, `package.go` | Bounded downloads and previewed package integrity |
+| Launch execution | `launch.go`, `internal/launch/` | Secure adapter defaults, argument forwarding, interactive streams and inference-key selection |
+| Batch and manager removal | `batch.go`, `self.go` | One locked sequential batch, stale previews, independent state choices and executable removal last |
+| Provider accounts | `accounts.go`, `accounts_cli.go`, `internal/providers/`, `internal/appserver/`, `internal/vault/` | Encrypted account vault, separate inference/reporting keys, bounded paginated read-only reports and provider cooldowns |
+| Shared library | `internal/library/`, `library.go`, `library_cli.go`, `library_tui.go` | Encrypted reusable records, compatibility, captured assets and approved sequential fan-out |
+| Setup | `internal/setup/`, `setup.go`, `setup_tui.go`, `scripts/install.sh` | Publisher checksum, private prefix, optional owned launcher, non-overwriting configuration initialization |
+| User interface | `internal/editor/`, `tui.go`, `components_tui.go`, `management_tui.go`, `monitor_tui.go`, `capabilities.go` | Screen transitions, private editor requests and validation, owner/scope controls, typed approval and cancellation |
+| Package transport | `internal/download/`, `http.go`, `package.go` | Bounded HTTPS downloads, streaming integrity verification and atomic artifact publication |
+| Native filesystem | `filesystem.go`, `internal/storage/` | Private native IO boundary, confinement, atomic storage and deterministic failure proof |
+| Configuration encoding | `encoding.go`, `internal/stateconfig/` | Native JSON/TOML/YAML serialization, bounded request publication and deterministic encoding failure proof |
 
-File names in the table refer to `internal/manager/` unless an absolute repository
+Package paths are repository-relative. Remaining file names in the table refer to `internal/manager/` unless an absolute repository
 location is shown. Tests live beside their owning code and use synthetic homes,
 fake native commands and in-memory recovery keys. (Local workspace, 2026)
 
@@ -34,9 +41,30 @@ fake native commands and in-memory recovery keys. (Local workspace, 2026)
 5. On failure or cancellation, stop installer children before rollback. Restore
    snapshots and services. Retain the recovery journal when restoration fails.
 
+If both replacement and rollback renames fail, the original tree remains in the
+replacement staging directory. The returned error identifies that retained path.
+Cleanup removes the staging directory only when it no longer holds the sole
+original payload. (Local workspace, 2026)
+
 The flow is implemented in `buildPlan`, `validatePlan` and `execute`. Permanent
 discard may irreversibly delete older recovery after rollback capture, so its
 preview and approval differ from recoverable changes. (Local workspace, 2026)
+
+Batches validate all plans before the first mutation and retain one lock across
+ordered execution. Each item retains its own recovery record. Failure restores
+the failed item and stops later ones, preserving earlier committed results.
+Self-removal uses the same batch engine and removes the manager executable last.
+Manager metadata deletion excludes retained harness states, profiles and shims. The recorded manager launcher is separately verified and removed.
+(Local workspace, 2026)
+
+Account mutations share the filesystem lock and encrypted storage identity.
+Reporting uses a separate HTTPS client that refuses redirects and withholds
+provider error bodies. Scoped engine copies share provider cooldowns through a
+pointer, so no mutex is copied. Reporting loads an independent registry snapshot before launching the explicitly
+selected native account protocol, avoiding transaction-owned registry/profile
+state. The app-server module owns bounded initialization/quota reads and process
+cleanup. Google costs use validated read-only export pages. Provider caching and
+HTTP throttling preserve upstream intervals. Billing changes use native links. (Local workspace, 2026)
 
 ## State and scope
 
@@ -67,17 +95,33 @@ bounded and removed on every normal result path. Cancellable copying finishes
 before rollback. See the [operator guide](components.md) for supported native
 adapters and external-side-effect limits. (Local workspace, 2026)
 
+## Functional ownership
+
+`stateconfig` owns categories, native codecs, classification and field traversal.
+`component` owns local field/asset planning, disabled-array positions, native flag
+recognition and manifest compatibility. It returns planned writes without owning
+approval, publication, snapshots or rollback. Its IO contract keeps confinement
+and failure injection at the transaction boundary. `launch` owns independent
+argument defaults and their POSIX representation. Direct launches and shims use
+that same policy. Remaining manager tests cover engine coordination and native
+adapter transactions across these modules. (Local workspace, 2026)
+
 ## Agent documentation
 
-`AGENTS.md` routes project work. `.agents/skills/` contains discoverable Codex
-skills, including the TUI-specific `terminal-inspect` workflow. `.agents/roles/`
-contains optional role briefs read by an explicitly requested coordinator.
-The briefs do not configure models, grant tools or launch workers. Codex discovers
-repository skills under `.agents/skills/`. (OpenAI, 2026)
+`AGENTS.md` routes project work. `.agents/skills/` contains the engineering
+workflows. `.codex/agents/` contains native project-scoped role configurations.
+Descriptions and instructions are model and harness agnostic. Models inherit
+from the current session. Delegation requires an explicit request. (Local workspace, 2026)
 
-The skills and Git hook policies retain the upstream directive provenance.
-Adaptation removes Claude-specific dispatch assumptions and keeps the same
+The skills and Git hook policies retain the pinned directive provenance and its
 privacy, evidence, test-first and no-co-author policies. (zaRizk7, 2026)
+
+## Go contracts and verification
+
+Package, type and function comments describe arguments, results and the trust
+boundaries at their owning layer. Read the package with `go doc ./internal/manager`
+or `go doc -u ./internal/manager` for internal contracts. The [verification guide](testing.md)
+records the unit/integration boundaries and exact coverage gate. (Local workspace, 2026)
 
 ## References
 
