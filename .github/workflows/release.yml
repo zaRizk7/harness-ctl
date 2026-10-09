@@ -1,0 +1,46 @@
+name: Draft release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    with:
+      version: ${{ github.ref_name }}
+
+  draft:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: Prepare verified release assets
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || exit 1
+          gh run download "$GITHUB_RUN_ID" --dir downloaded
+          mkdir release-assets
+          cp downloaded/harness-ctl-darwin-arm64/harness-ctl-darwin-arm64 release-assets/
+          cp downloaded/harness-ctl-darwin-amd64/harness-ctl-darwin-amd64 release-assets/
+          cd release-assets
+          sha256sum harness-ctl-darwin-arm64 harness-ctl-darwin-amd64 > SHA256SUMS
+      - name: Create draft for maintainer review
+        run: |
+          cat > release-notes.md <<'NOTES'
+          macOS Apple Silicon and Intel binaries are attached with SHA-256 checksums.
+
+          Review the installation guide and current limitations in the repository
+          before publishing this draft. Checksums verify downloaded bytes against
+          the release metadata. They do not provide an independent publisher signature.
+          NOTES
+          gh release create "$RELEASE_TAG" release-assets/* \
+            --verify-tag --draft --title "$RELEASE_TAG" --notes-file release-notes.md

@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        description: Version embedded in the verified binaries
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: macOS ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: amd64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      GOTOOLCHAIN: local
+      BUILD_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Formatting, vet and race tests
+        run: make check
+      - name: Exact production statement coverage
+        if: matrix.arch == 'arm64'
+        run: make coverage
+      - name: Build versioned binary
+        env:
+          GOOS: darwin
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          version="${BUILD_VERSION:-$GITHUB_SHA}"
+          [[ "$version" =~ ^[a-zA-Z0-9._+-]+$ ]] || exit 1
+          mkdir -p bin
+          go build -trimpath \
+            -ldflags "-X github.com/zaRizk7/harness-ctl/internal/manager.version=$version" \
+            -o "bin/harness-ctl-darwin-$GOARCH" ./cmd/harness-ctl
+          "bin/harness-ctl-darwin-$GOARCH" version
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: harness-ctl-darwin-${{ matrix.arch }}
+          path: bin/harness-ctl-darwin-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 7
