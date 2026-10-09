@@ -1,0 +1,65 @@
+[
+  {
+    "id": "openai",
+    "api_origin": "https://api.openai.com",
+    "usage_path": "/v1/organization/usage/completions",
+    "cost_path": "/v1/organization/costs",
+    "limits_path": "/v1/organization/projects/{project}/rate_limits",
+    "billing_url": "https://platform.openai.com/settings/organization/billing/overview",
+    "usage_url": "https://platform.openai.com/usage",
+    "keys_url": "https://platform.openai.com/api-keys",
+    "subscription_url": "https://chatgpt.com/#settings",
+    "key_env": "OPENAI_API_KEY",
+    "report_adapter": "openai",
+    "subscription_adapter": "app_server"
+  },
+  {
+    "id": "anthropic",
+    "api_origin": "https://api.anthropic.com",
+    "usage_path": "/v1/organizations/usage_report/messages",
+    "cost_path": "/v1/organizations/cost_report",
+    "limits_path": "/v1/organizations/rate_limits",
+    "billing_url": "https://platform.claude.com/settings/billing",
+    "usage_url": "https://platform.claude.com/settings/usage",
+    "keys_url": "https://platform.claude.com/settings/keys",
+    "subscription_url": "https://claude.ai/settings/billing",
+    "key_env": "ANTHROPIC_API_KEY",
+    "report_adapter": "anthropic",
+    "min_report_seconds": 60
+  },
+  {
+    "id": "google",
+    "api_origin": "https://monitoring.googleapis.com",
+    "usage_path": "/v3/projects/{project}/timeSeries",
+    "cost_path": "",
+    "limits_path": "/v1beta1/projects/{project}/services/generativelanguage.googleapis.com/consumerQuotaMetrics",
+    "billing_url": "https://console.cloud.google.com/billing",
+    "usage_url": "https://aistudio.google.com/usage",
+    "keys_url": "https://aistudio.google.com/apikey",
+    "subscription_url": "https://one.google.com/settings",
+    "key_env": "GEMINI_API_KEY",
+    "quota_origin": "https://serviceusage.googleapis.com",
+    "billing_origin": "https://cloudbilling.googleapis.com",
+    "report_adapter": "google",
+    "export_origin": "https://bigquery.googleapis.com",
+    "min_report_seconds": 60
+  },
+  {
+    "id": "openrouter",
+    "api_origin": "https://openrouter.ai",
+    "usage_path": "/api/v1/key",
+    "report_adapter": "key_usage",
+    "report_credential": "inference",
+    "key_usage": {
+      "object_pointer": "/data",
+      "cost_field": "usage",
+      "limit_field": "limit",
+      "remaining_field": "limit_remaining",
+      "unit": "credits"
+    },
+    "key_env": "OPENROUTER_API_KEY",
+    "billing_url": "https://openrouter.ai/settings/credits",
+    "usage_url": "https://openrouter.ai/activity",
+    "keys_url": "https://openrouter.ai/settings/keys"
+  }
+]
