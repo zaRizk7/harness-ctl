@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"github.com/zaRizk7/harness-ctl/internal/credentials"
 	"github.com/zaRizk7/harness-ctl/internal/library"
 	"os"
 	"os/signal"
@@ -59,6 +60,9 @@ type interruptMsg struct{}
 
 // tuiModel stores screen selection, preview approval and cancellable command state.
 type tuiModel struct {
+	nativeAuthInput                         string
+	nativeAuthOperation                     string
+	credentialProfiles                      []credentials.View
 	libraryItems                            []library.View
 	libraryID, libraryAction, libraryBefore string
 	librarySelected                         map[string]bool
@@ -108,8 +112,8 @@ type tuiModel struct {
 // newTUIProgram is the terminal runtime boundary, allowing isolated input/output in integration tests.
 var newTUIProgram = tea.NewProgram
 
-var actionNames = []string{"Install isolated", "Update / upgrade", "Reinstall", "Factory reset", "Uninstall", "Migrate to isolated", "Launch source profile", "Manage components"}
-var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall", "migrate", "profile", "manage"}
+var actionNames = []string{"Install isolated", "Update / upgrade", "Reinstall", "Factory reset", "Uninstall", "Migrate to isolated", "Launch source profile", "Manage components", "Native authentication / usage"}
+var actionIDs = []string{"install", "update", "reinstall", "reset", "uninstall", "migrate", "profile", "manage", "auth"}
 
 // newModel returns the initial read-only TUI state for e without starting
 // inventory or creating manager storage.
@@ -249,6 +253,9 @@ func (m *tuiModel) startOperation(work func(context.Context, func(string)) error
 // command. Mutations start only from an approved preview. Progress and failure
 // messages preserve recovery and cancellation state.
 func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if model, cmd, handled := m.nativeAuthUpdate(msg); handled {
+		return model, cmd
+	}
 	if model, cmd, handled := m.libraryUpdate(msg); handled {
 		return model, cmd
 	}
@@ -536,6 +543,10 @@ func (m tuiModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			action := actions[m.cursor]
+			if action == "auth" {
+				m.screen, m.cursor = "native-auth", 0
+				return m, nil
+			}
 			if action == "manage" {
 				m.componentScope = "base"
 				if _, exists := m.e.reg.Profiles[inst.ID]; exists {
@@ -645,6 +656,12 @@ func (m tuiModel) itemCount() int {
 		return len(m.selfOwnerCandidates)
 	case "accounts":
 		return len(m.accountItems)
+	case "native-auth-profiles":
+		return len(m.credentialProfiles)
+	case "native-auth-owners":
+		return len(m.owners)
+	case "native-auth":
+		return len(m.authOperations())
 	case "actions":
 		return len(m.actions())
 	case "options":
@@ -702,6 +719,10 @@ func (m tuiModel) confirm() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		p := m.p
+		if p.Request.Action == "auth" {
+			m.screen = "native-auth-running"
+			return m, m.authTerminal(p)
+		}
 		return m, m.startOperation(func(ctx context.Context, progress func(string)) error { return m.e.execute(ctx, p, p.ID, progress) })
 	case "restore-preview":
 		if m.typed != "restore" {
@@ -810,6 +831,26 @@ func (m tuiModel) View() tea.View {
 				lines = append(lines, "Unsupported: "+cleanText(inst.Harness)+" at "+cleanText(inst.Path))
 			}
 		}
+	case "native-auth-argument":
+		lines = append(lines, m.e.cfg.Harnesses[m.harness].Auth.RequiredArgument[m.nativeAuthOperation]+": "+cleanText(m.nativeAuthInput), "Native prompts handle passwords and keys. Enter previews the command.")
+	case "native-auth-profiles":
+		for i, p := range m.credentialProfiles {
+			lines = append(lines, m.row(i, p.ID+" / "+p.Captured.Format("2006-01-02 15:04")))
+		}
+		hint = "Enter restore · x remove encrypted profile · c capture selected native credentials · o owners"
+	case "native-auth-owners":
+		for i, owner := range m.owners {
+			lines = append(lines, m.row(i, mark(contains(m.req.Owners, owner))+" "+owner))
+		}
+		hint = "Space select affected owner · Enter return"
+	case "native-auth":
+		lines = append(lines, "Native authentication / usage")
+		for i, op := range m.authOperations() {
+			lines = append(lines, m.row(i, op), cleanText(m.e.cfg.Harnesses[m.harness].Auth.Notes[op]))
+		}
+		lines = append(lines, "Native credentials remain with the harness. Tab cycles installations. o selects affected owners. c captures credentials. p lists profiles.")
+	case "native-auth-running":
+		lines = append(lines, "Native authentication is attached to the terminal.")
 	case "actions":
 		if inst.ID != "" {
 			lines = append(lines, "Selected: "+cleanText(inst.Method)+" · "+cleanText(inst.Version), cleanText(inst.Path), "Tab cycles detected installations", "")
@@ -968,6 +1009,24 @@ func (m tuiModel) previewLines() []string {
 		for _, cat := range categories {
 			if p.Request.Disabled[cat] {
 				lines = append(lines, "EXCLUDE "+string(cat))
+			}
+		}
+	}
+	if p.Credential != nil && p.Credential.Action != "purge" {
+		lines = append(lines, "Credential profile: "+p.Request.CredentialID+" / "+p.Request.Target)
+		if p.Request.Target == "capture" || p.Request.Target == "remove" {
+			lines = append(lines, "WRITE encrypted profile vault: "+p.Credential.Path)
+		}
+		for _, loc := range p.Credential.Locations {
+			path, _ := m.e.credentialFile(p, loc)
+			if p.Request.Target == "capture" {
+				lines = append(lines, "READ native credentials: "+path)
+			}
+		}
+		if p.Request.Target == "apply" {
+			for _, file := range p.Credential.Profile.Files {
+				path, _ := m.e.credentialFile(p, file.Location)
+				lines = append(lines, "WRITE native credentials: "+path)
 			}
 		}
 	}

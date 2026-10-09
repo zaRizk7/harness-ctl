@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/zaRizk7/harness-ctl/internal/launch"
+	"github.com/zaRizk7/harness-ctl/internal/nativeauth"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -17,24 +18,25 @@ var identityPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
 // Spec defines one configured harness catalog entry. Native adapter code
 // owns installation and state-format contracts selected by ID and Kind.
 type Spec struct {
-	ID             string        `json:"id"`
-	Name           string        `json:"name"`
-	Command        string        `json:"command"`
-	Package        string        `json:"package"`
-	LegacyPackages []string      `json:"legacy_packages"`
-	BrewPackages   []string      `json:"brew_packages"`
-	HomeEnv        string        `json:"home_env"`
-	DefaultHome    string        `json:"default_home"`
-	Kind           string        `json:"kind"`
-	Docs           string        `json:"docs"`
-	ConfigFiles    []string      `json:"config_files"`
-	SharedClients  []string      `json:"shared_clients"`
-	LaunchLabels   []string      `json:"launch_labels"`
-	LaunchNote     string        `json:"launch_note,omitempty"`
-	LaunchArgs     []string      `json:"launch_args,omitempty"`
-	ApprovalFlags  []string      `json:"approval_flags,omitempty"`
-	LaunchRules    []launch.Rule `json:"launch_rules,omitempty"`
-	ConfigFlags    []string      `json:"config_flags,omitempty"`
+	Auth           nativeauth.Spec `json:"auth,omitempty"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	Command        string          `json:"command"`
+	Package        string          `json:"package"`
+	LegacyPackages []string        `json:"legacy_packages"`
+	BrewPackages   []string        `json:"brew_packages"`
+	HomeEnv        string          `json:"home_env"`
+	DefaultHome    string          `json:"default_home"`
+	Kind           string          `json:"kind"`
+	Docs           string          `json:"docs"`
+	ConfigFiles    []string        `json:"config_files"`
+	SharedClients  []string        `json:"shared_clients"`
+	LaunchLabels   []string        `json:"launch_labels"`
+	LaunchNote     string          `json:"launch_note,omitempty"`
+	LaunchArgs     []string        `json:"launch_args,omitempty"`
+	ApprovalFlags  []string        `json:"approval_flags,omitempty"`
+	LaunchRules    []launch.Rule   `json:"launch_rules,omitempty"`
+	ConfigFlags    []string        `json:"config_flags,omitempty"`
 }
 
 //go:embed catalog.json
@@ -62,6 +64,9 @@ func Validate(specs []Spec) error {
 			return fmt.Errorf("invalid or duplicate harness identity/command")
 		}
 		ids[s.ID], commands[s.Command] = true, true
+		if err := nativeauth.Validate(s.Auth); err != nil {
+			return err
+		}
 		if s.Kind != "npm" && s.Kind != "hermes" && s.Kind != "prime" {
 			return fmt.Errorf("unsupported adapter kind for %s", s.ID)
 		}

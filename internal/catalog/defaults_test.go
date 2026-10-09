@@ -26,3 +26,11 @@ func TestContractValidationRejectsNativeTrustViolations(t *testing.T) {
 		t.Fatal("empty catalog accepted")
 	}
 }
+
+func TestRejectsInvalidNativeAuthContract(t *testing.T) {
+	specs := Defaults()
+	specs[0].Auth.Commands["unverified"] = nil
+	if Validate(specs) == nil {
+		t.Fatal("unknown native auth operation")
+	}
+}

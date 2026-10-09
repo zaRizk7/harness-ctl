@@ -68,7 +68,30 @@
     "config_flags": [
       "--config",
       "-c"
-    ]
+    ],
+    "auth": {
+      "commands": {
+        "login": [
+          "login"
+        ],
+        "logout": [
+          "logout"
+        ],
+        "status": [
+          "login",
+          "status"
+        ]
+      },
+      "notes": {
+        "login": "Native ChatGPT OAuth. Add --device-auth for device login. Credentials remain in the selected native state and OS store."
+      },
+      "credential_files": [
+        {
+          "root": 0,
+          "path": "auth.json"
+        }
+      ]
+    }
   },
   {
     "name": "Claude Code",
@@ -101,7 +124,34 @@
         ]
       }
     ],
-    "launch_note": "Claude auto mode depends on the installed version, supported model and provider/organization policy. Native checks may retain manual approval when unavailable. Use launch --native for the native starting policy."
+    "launch_note": "Claude auto mode depends on the installed version, supported model and provider/organization policy. Native checks may retain manual approval when unavailable. Use launch --native for the native starting policy.",
+    "auth": {
+      "commands": {
+        "login": [
+          "auth",
+          "login"
+        ],
+        "logout": [
+          "auth",
+          "logout"
+        ],
+        "status": [
+          "auth",
+          "status"
+        ],
+        "usage": []
+      },
+      "notes": {
+        "login": "Native subscription OAuth. Add --console for API-billed Console login. OS-held credentials can be shared with other native clients.",
+        "usage": "In the native interface use /usage for subscription limits and /cost for session API cost. No verified machine-readable subscription quota export is configured."
+      },
+      "credential_files": [
+        {
+          "root": 0,
+          "path": ".credentials.json"
+        }
+      ]
+    }
   },
   {
     "name": "Gemini CLI",
@@ -130,7 +180,25 @@
         ]
       }
     ],
-    "launch_note": "Gemini auto_edit approves edit tools and retains prompts for other tools. Sandboxing follows native configuration. No unrestricted approval mode is added."
+    "launch_note": "Gemini auto_edit approves edit tools and retains prompts for other tools. Sandboxing follows native configuration. No unrestricted approval mode is added.",
+    "auth": {
+      "commands": {
+        "manage": [],
+        "login": [],
+        "usage": []
+      },
+      "notes": {
+        "manage": "In the native interface use /auth to choose or change authentication.",
+        "login": "In the native interface use /auth and choose Login with Google.",
+        "usage": "In the native interface use /stats for native session statistics and quota. No machine-readable quota export is verified."
+      },
+      "credential_files": [
+        {
+          "root": 0,
+          "path": "oauth_creds.json"
+        }
+      ]
+    }
   },
   {
     "name": "OpenCode",
@@ -152,7 +220,32 @@
     "approval_flags": [
       "--auto"
     ],
-    "launch_note": "OpenCode uses its native permission rules. Its --auto flag approves permissions not explicitly denied and is not a verified secure automatic policy. Configure native allow/ask/deny rules as needed."
+    "launch_note": "OpenCode uses its native permission rules. Its --auto flag approves permissions not explicitly denied and is not a verified secure automatic policy. Configure native allow/ask/deny rules as needed.",
+    "auth": {
+      "commands": {
+        "login": [
+          "auth",
+          "login"
+        ],
+        "logout": [
+          "auth",
+          "logout"
+        ],
+        "status": [
+          "auth",
+          "list"
+        ]
+      },
+      "notes": {
+        "login": "Native provider selector handles API keys and supported OAuth integrations."
+      },
+      "credential_files": [
+        {
+          "root": 1,
+          "path": "auth.json"
+        }
+      ]
+    }
   },
   {
     "name": "Pi",
@@ -169,7 +262,23 @@
     ],
     "id": "pi",
     "home_env": "PI_CODING_AGENT_DIR",
-    "launch_note": "Pi uses its native approval policy. Extension-defined policies remain native."
+    "launch_note": "Pi uses its native approval policy. Extension-defined policies remain native.",
+    "auth": {
+      "commands": {
+        "manage": [],
+        "login": []
+      },
+      "notes": {
+        "manage": "Use /login or /logout in the native interface.",
+        "login": "Use /login in the native interface to select a subscription or API key."
+      },
+      "credential_files": [
+        {
+          "root": 0,
+          "path": "auth.json"
+        }
+      ]
+    }
   },
   {
     "name": "Hermes Agent",
@@ -190,7 +299,35 @@
     "approval_flags": [
       "--yolo"
     ],
-    "launch_note": "Hermes uses its native approval policy. No secure automatic approval launch contract is verified."
+    "launch_note": "Hermes uses its native approval policy. No secure automatic approval launch contract is verified.",
+    "auth": {
+      "commands": {
+        "login": [
+          "auth",
+          "add"
+        ],
+        "logout": [
+          "auth",
+          "logout"
+        ],
+        "status": [
+          "auth",
+          "list"
+        ],
+        "manage": [
+          "auth"
+        ]
+      },
+      "notes": {
+        "login": "Append a native provider ID. OAuth and API-key entry run through the native credential pool. Inline API-key options are refused.",
+        "logout": "Append the native provider ID to clear.",
+        "manage": "Append the documented auth subcommand/provider arguments. Native refresh and pool management remain native."
+      },
+      "required_argument": {
+        "login": "provider ID",
+        "logout": "provider ID"
+      }
+    }
   },
   {
     "name": "OpenClaw",
@@ -210,7 +347,44 @@
     "launch_args": [
       "tui"
     ],
-    "launch_note": "OpenClaw TUI uses its native tool approval policy. No secure automatic approval launch flag is verified."
+    "launch_note": "OpenClaw TUI uses its native tool approval policy. No secure automatic approval launch flag is verified.",
+    "auth": {
+      "commands": {
+        "login": [
+          "models",
+          "auth",
+          "add"
+        ],
+        "status": [
+          "models",
+          "auth",
+          "list"
+        ],
+        "logout": [
+          "models",
+          "auth",
+          "logout"
+        ],
+        "manage": [
+          "models",
+          "auth",
+          "add"
+        ],
+        "usage": [
+          "models",
+          "status",
+          "--usage"
+        ]
+      },
+      "notes": {
+        "login": "Native provider selector. For a specific provider configure or forward the documented native options.",
+        "logout": "Append the native auth profile ID to remove. Remote Gateway credentials have separate ownership.",
+        "usage": "Native provider usage reporting. No live inference probe is added."
+      },
+      "required_argument": {
+        "logout": "native auth profile ID"
+      }
+    }
   },
   {
     "name": "Prime Agent",
@@ -225,6 +399,16 @@
     ],
     "id": "prime-agent",
     "home_env": "PRIME_AGENT_CODING_AGENT_DIR",
-    "launch_note": "Prime Agent uses its native execution policy. The manager does not add unrestricted approval bypass flags."
+    "launch_note": "Prime Agent uses its native execution policy. The manager does not add unrestricted approval bypass flags.",
+    "auth": {
+      "commands": {
+        "manage": [],
+        "login": []
+      },
+      "notes": {
+        "manage": "Use /login in the native interface. No dedicated logout/status CLI contract is verified.",
+        "login": "Use /login in the native interface to choose subscription or API-key authentication."
+      }
+    }
   }
 ]

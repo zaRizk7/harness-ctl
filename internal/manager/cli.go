@@ -30,11 +30,13 @@ No command opens the TUI.
     --preserve all|none|auth|CATEGORY,...  --target VERSION  --owners OWNER,...
     --preview  --yes  --permanent  --install-id ID
   library list|set|enable|disable|remove|apply
-  components list HARNESS CATEGORY
+  components list [--scope base|profile|source:NAME] HARNESS CATEGORY
   components apply [--yes|--preview] HARNESS REQUEST.json
   launch [--native] [--install-id ID] HARNESS [--] OPTIONS...
   HARNESS OPTIONS...                   launch shorthand
   path                                print shell PATH setup
+  auth [--install-id ID] [--owners OWNER,...] [--preview|--yes]
+    login|logout|status|manage|usage|route HARNESS [NATIVE_OPTIONS...]
   accounts list|set|enable|disable|remove|monitor|open
   self-uninstall [--harnesses] [--state] [--preserve CATEGORIES]
     [--owners OWNER,...] [--permanent] [--preview|--yes]
@@ -106,6 +108,7 @@ func mainWithIO(args []string, in io.Reader, out, errout io.Writer) int {
 		fmt.Fprintln(errout, err)
 		return 1
 	}
+	e.sourceConfig = *configFile
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	if rest[0] == "tui" {
@@ -142,6 +145,8 @@ func (e *engine) cli(ctx context.Context, args []string, in io.Reader, out io.Wr
 	case "path":
 		fmt.Fprintf(out, "export PATH=%s:\"$PATH\"\n", shellQuote(e.cfg.BinDir))
 		return nil
+	case "auth":
+		return e.authCLI(ctx, args[1:], in, out)
 	case "accounts":
 		return e.accountsCLI(ctx, args[1:], in, out)
 	case "self-uninstall":
@@ -280,6 +285,7 @@ func (e *engine) componentsCLI(ctx context.Context, args []string, in io.Reader,
 		return fmt.Errorf("components list HARNESS CATEGORY | apply [--yes|--preview] HARNESS REQUEST.json")
 	}
 	f := flag.NewFlagSet("components", flag.ContinueOnError)
+	scope := f.String("scope", "base", "selected component inventory source")
 	f.SetOutput(out)
 	yes := f.Bool("yes", false, "approve displayed preview")
 	preview := f.Bool("preview", false, "preview only")
@@ -311,7 +317,7 @@ func (e *engine) componentsCLI(ctx context.Context, args []string, in io.Reader,
 				}
 			}
 		}
-		entries, err := e.components(inst, "base", cat)
+		entries, err := e.components(inst, *scope, cat)
 		if err != nil {
 			return err
 		}

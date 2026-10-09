@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/zaRizk7/harness-ctl/internal/launch"
+	"github.com/zaRizk7/harness-ctl/internal/nativeauth"
 )
 
 func TestUnchangedLegacyPolicyKeepsIndependentOverrides(t *testing.T) {
@@ -43,5 +44,24 @@ func TestUnchangedLegacyPolicyKeepsIndependentOverrides(t *testing.T) {
 		if !reflect.DeepEqual(NormalizeLegacy(clone), clone) {
 			t.Fatal("rewrote custom policy", change)
 		}
+	}
+}
+
+func TestLegacyNativeAuthDefaultsPreserveExplicitCustomization(t *testing.T) {
+	specs := Defaults()
+	want := specs[0].Auth
+	specs[0].Auth = nativeauth.Spec{}
+	before, _ := json.Marshal(specs)
+	got := NormalizeLegacy(specs)
+	if !reflect.DeepEqual(got[0].Auth, want) {
+		t.Fatal("legacy native auth metadata was not supplied")
+	}
+	after, _ := json.Marshal(specs)
+	if string(before) != string(after) {
+		t.Fatal("normalization rewrote the user's catalog")
+	}
+	specs[0].Auth.Commands = map[string][]string{}
+	if !reflect.DeepEqual(NormalizeLegacy(specs)[0].Auth, specs[0].Auth) {
+		t.Fatal("explicit native auth disabling was overwritten")
 	}
 }

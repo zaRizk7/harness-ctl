@@ -181,6 +181,11 @@ The reusable `key_usage` adapter maps an `object_pointer`, `cost_field`,
 Configure it only against the provider's verified contract. Provider URLs and
 key-introspection field names live in user configuration. (Local workspace, 2026)
 
+Native OAuth routing and opt-in encrypted file-backed credential profiles use
+the [authentication manager](authentication.md). Inference keys, reporting keys
+and captured native credentials remain distinct. Native token refresh stays with
+the harness. (User, 2026; Local workspace, 2026)
+
 ## References
 
 - Local workspace (2026). [Vault](../internal/manager/accounts.go),

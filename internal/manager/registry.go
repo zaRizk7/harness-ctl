@@ -166,6 +166,9 @@ func (e *engine) writeShim(inst installation) error {
 	if hasProfile && prof.Disabled[proxies] {
 		body.WriteString("unset HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY http_proxy https_proxy all_proxy no_proxy\n")
 	}
+	if err := e.authShim(&body, inst, s); err != nil {
+		return err
+	}
 	for _, key := range sortedKeys(env) {
 		fmt.Fprintf(&body, "export %s=%s\n", key, shellQuote(env[key]))
 	}

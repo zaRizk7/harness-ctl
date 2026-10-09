@@ -35,6 +35,30 @@ signed in to the intended subscription. Anthropic/Google consumer numeric
 adapters remain unimplemented or unverified. Do not infer numeric limits from
 plan labels. (Project, 2026)
 
+## Native authentication and encrypted profiles
+
+Use `harness-ctl auth login HARNESS` to authenticate through the selected native
+installation. Generated launchers also route matching native commands, including
+`claude auth login`. Native OAuth and token refresh stay native. Credential
+management can opt into approved capture/restore of declared native files.
+OS Keychain secrets remain in their native store. (Project, 2026)
+
+```sh
+harness-ctl auth status codex
+harness-ctl auth login codex --device-auth
+harness-ctl auth profiles capture --profile work --preview codex
+harness-ctl auth profiles capture --profile work --owners 'OWNER1,OWNER2' codex
+harness-ctl auth profiles apply --profile work codex
+harness-ctl auth profiles list
+```
+
+Select **Native authentication / usage** in the harness action screen. `o` selects
+affected owners, `c` previews capture, and `p` lists saved profiles. Enter previews
+restore and `x` previews removal. Capture never follows OS stores or automatically
+synchronizes refreshed tokens. See the
+[authentication guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/authentication.md)
+for approval, compatible scope and recovery limits. (Project, 2026)
+
 ## API keys, costs and billing
 
 The [account schema](https://github.com/zaRizk7/harness-ctl/blob/main/docs/accounts.md)

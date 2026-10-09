@@ -5,12 +5,14 @@ import (
 	"flag"
 	"fmt"
 	"github.com/zaRizk7/harness-ctl/internal/launch"
+	"github.com/zaRizk7/harness-ctl/internal/nativeauth"
 	"github.com/zaRizk7/harness-ctl/internal/providers"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // launchPolicy returns the catalog's independent security defaults and overrides.
@@ -99,6 +101,10 @@ func (e *engine) launchCLI(ctx context.Context, args []string, in io.Reader, out
 	if len(forward) > 0 && forward[0] == "--" {
 		forward = forward[1:]
 	}
+	s, _ := e.specFor(harness)
+	if op, _ := nativeauth.Match(s.Auth, forward); op != "" {
+		return e.authCLI(ctx, append([]string{"--install-id", selected.ID, "route", harness}, forward...), in, out)
+	}
 	c, err := e.launchCommand(selected, forward, *native)
 	if err != nil {
 		return err
@@ -127,6 +133,8 @@ func (e *engine) launchCLI(ctx context.Context, args []string, in io.Reader, out
 func interactiveCommand(ctx context.Context, c command, in io.Reader, out io.Writer) error {
 	cmd := exec.CommandContext(ctx, c.Path, c.Args...)
 	cmd.Dir = c.Dir
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return stopProcessGroup(cmd.Process.Pid) }
 	cmd.Stdin = in
 	cmd.Stdout = out
 	cmd.Stderr = out

@@ -121,7 +121,7 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 		}
 		meta.Items = append(meta.Items, snapshotItem{Path: r.Path, Root: r.Root, Categories: resourceCategories(r), Owners: append([]string{}, r.Owners...)})
 	}
-	if within(e.cfg.Root, p.StateRoot) {
+	if p.Request.Action != "credentials" && within(e.cfg.Root, p.StateRoot) {
 		stateEngine := *e
 		stateEngine.cfg.StateRoots = map[string]string{p.Spec.ID: p.StateRoot}
 		for _, root := range stateEngine.rootsFor(p.Spec) {
@@ -138,7 +138,7 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	if p.Request.Model == "isolated" && p.Destination != "" && p.Destination != p.Install.Root {
 		meta.Items = append(meta.Items, snapshotItem{Path: p.Destination, Root: filepath.Dir(p.Destination), Categories: []category{other}})
 	}
-	if p.Install.Root != "" && p.Request.Action != "reset" && p.Request.Action != "manage" && p.Install.Method != "brew" {
+	if p.Install.Root != "" && p.Request.Action != "reset" && p.Request.Action != "manage" && p.Request.Action != "auth" && p.Request.Action != "credentials" && p.Install.Method != "brew" {
 		meta.Items = append(meta.Items, snapshotItem{Path: p.Install.Root, Root: filepath.Dir(p.Install.Root), Categories: []category{other}})
 	}
 	if p.Component != nil && p.Component.Native {
@@ -159,19 +159,22 @@ func (e *engine) snapshot(ctx context.Context, p *plan) (snapshotMeta, error) {
 	}
 	shim := filepath.Join(e.cfg.BinDir, p.Spec.Command)
 	meta.Items = append(meta.Items, snapshotItem{Path: shim, Root: e.cfg.BinDir, Categories: []category{other}})
-	if prof, ok := e.reg.Profiles[p.Install.ID]; ok {
+	if prof, ok := e.reg.Profiles[p.Install.ID]; ok && p.Request.Action != "credentials" {
 		meta.Items = append(meta.Items, snapshotItem{Path: prof.Root, Root: filepath.Dir(prof.Root), Categories: categories})
 	}
 	if p.Request.Action == "profile" {
 		root := filepath.Join(e.cfg.Root, "profiles", p.Install.ID)
 		meta.Items = append(meta.Items, snapshotItem{Path: root, Root: filepath.Dir(root), Categories: categories})
 	}
-	if p.Install.Managed {
+	if p.Install.Managed && p.Request.Action != "credentials" {
 		root := filepath.Join(e.cfg.Root, "profiles", p.Install.ID)
 		meta.Items = append(meta.Items, snapshotItem{Path: root, Root: filepath.Dir(root), Categories: categories})
 	}
 	for _, path := range p.Install.ServicePaths {
 		meta.Items = append(meta.Items, snapshotItem{Path: path, Root: filepath.Dir(path), Categories: []category{other}})
+	}
+	if p.Credential != nil && p.Credential.Action == "purge" {
+		meta.Items = append(meta.Items, snapshotItem{Path: p.Credential.Path, Root: e.cfg.Root, Categories: []category{auth}, Owners: []string{p.Spec.ID}})
 	}
 	meta.Items = dedupeItems(meta.Items)
 	for i := range meta.Items {
@@ -549,7 +552,7 @@ func (e *engine) authenticatedSnapshot(id string) (snapshotMeta, error) {
 // validRestoreItem returns an error unless item's target matches s's documented
 // state or inst's verified installation ownership.
 func (e *engine) validRestoreItem(s harnessSpec, item snapshotItem, inst installation) error {
-	allowed := within(filepath.Join(e.cfg.Root, "installs", s.ID), item.Path) || within(filepath.Join(e.cfg.Root, "states", s.ID), item.Path) || item.Path == filepath.Join(e.cfg.BinDir, s.Command)
+	allowed := (item.Path == filepath.Join(e.cfg.Root, "credentials.age") && item.Root == e.cfg.Root && len(item.Categories) == 1 && item.Categories[0] == auth) || within(filepath.Join(e.cfg.Root, "installs", s.ID), item.Path) || within(filepath.Join(e.cfg.Root, "states", s.ID), item.Path) || item.Path == filepath.Join(e.cfg.BinDir, s.Command)
 	if within(filepath.Join(e.cfg.Root, "profiles"), item.Path) && filepath.Dir(item.Path) == filepath.Join(e.cfg.Root, "profiles") {
 		allowed = true
 	}

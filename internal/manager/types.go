@@ -231,22 +231,26 @@ type resource struct {
 // request contains a lifecycle action and the selected preservation, owner
 // and source-profile controls. It is input to read-only plan construction.
 type request struct {
-	Harness   string
-	InstallID string
-	Action    string
-	Target    string
-	Model     string
-	Preserve  map[category]bool
-	Permanent bool
-	Owners    []string
-	RemoveOld bool
-	Disabled  map[category]bool
-	Component *componentRequest
+	CredentialID string
+	AuthArgs     []string
+	Harness      string
+	InstallID    string
+	Action       string
+	Target       string
+	Model        string
+	Preserve     map[category]bool
+	Permanent    bool
+	Owners       []string
+	RemoveOld    bool
+	Disabled     map[category]bool
+	Component    *componentRequest
 }
 
 // plan is a previewed transaction with native commands, resource fingerprints
 // and blockers. Execution revalidates it under the mutation lock.
 type plan struct {
+	Credential         *credentialMutation
+	AuthDigest         string
 	ID                 string
 	Created            time.Time
 	Request            request
@@ -287,6 +291,8 @@ type operationRecord struct {
 // engine owns configuration, registry, native boundaries and transactional state.
 // Scoped copies share reporting cooldowns and retain the same storage ownership.
 type engine struct {
+	sourceConfig  string
+	authIO        *nativeAuthIO
 	cfg           config
 	run           runner
 	reg           registry

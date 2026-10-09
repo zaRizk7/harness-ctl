@@ -43,7 +43,7 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	}
 	p := &plan{ID: randomID(), Created: time.Now().UTC(), Request: req, Spec: s}
 	switch req.Action {
-	case "install", "uninstall", "reinstall", "reset", "update", "migrate", "profile", "manage":
+	case "install", "uninstall", "reinstall", "reset", "update", "migrate", "profile", "manage", "auth", "credentials":
 	default:
 		return nil, fmt.Errorf("unknown lifecycle action")
 	}
@@ -64,7 +64,7 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 			}
 		}
 		if p.Install.ID == "" {
-			if req.Action != "manage" || req.InstallID != "" {
+			if (req.Action != "manage" && req.Action != "credentials") || req.InstallID != "" {
 				return nil, fmt.Errorf("selected installation no longer exists")
 			}
 			p.Install = e.retainedInstallation(s.ID)
@@ -104,6 +104,20 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	p.StateRoot = e.stateRoot(s)
 	if p.Install.Managed {
 		p.StateRoot = p.Install.StateRoot
+	}
+	if req.Action == "auth" || req.Action == "credentials" {
+		if p.Install.Path != "" {
+			c, err := e.launchCommand(p.Install, nil, true)
+			if err != nil {
+				return nil, err
+			}
+			if root := c.Env[s.HomeEnv]; root != "" {
+				p.StateRoot = root
+			}
+			if prof, ok := e.reg.Profiles[p.Install.ID]; ok {
+				p.StateRoot = nativeStateRoot(s, prof.Root)
+			}
+		}
 	}
 	if req.Action == "manage" && req.Component != nil && req.Component.Scope == "profile" {
 		state, _, err := e.componentEngine(p.Install, "profile")
@@ -201,7 +215,19 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 		}
 		p.Component.Digest = componentPlanDigest(p)
 	}
-	if len(p.Blockers) == 0 && req.Action != "reset" && req.Action != "uninstall" && req.Action != "profile" && req.Action != "manage" {
+	if req.Action == "auth" {
+		if err := e.planNativeAuth(p); err != nil {
+			return nil, err
+		}
+	}
+	if req.Action == "credentials" {
+		if err := e.planCredentials(p); err != nil {
+			return nil, err
+		}
+	} else if err := e.planCredentialPurge(p); err != nil {
+		return nil, err
+	}
+	if len(p.Blockers) == 0 && req.Action != "credentials" && req.Action != "auth" && req.Action != "reset" && req.Action != "uninstall" && req.Action != "profile" && req.Action != "manage" {
 		if err := e.installRecipe(ctx, p); err != nil {
 			return nil, err
 		}
@@ -243,6 +269,9 @@ func (e *engine) buildPlan(ctx context.Context, req request) (*plan, error) {
 	}
 	if p.RegistryDigest != registryDigest {
 		return nil, fmt.Errorf("registry changed while constructing preview. Try again")
+	}
+	if req.Action == "auth" || p.Credential != nil {
+		p.AuthDigest = nativeAuthDigest(p)
 	}
 	return p, nil
 }
@@ -520,6 +549,9 @@ func (e *engine) uninstallRecipe(p *plan, inst installation) error {
 // validatePlan returns an error if p is blocked or any registry, executable,
 // resource or component fingerprint changed after preview.
 func (e *engine) validatePlan(p *plan) error {
+	if (p.Request.Action == "auth" || p.Credential != nil) && p.AuthDigest != nativeAuthDigest(p) {
+		return fmt.Errorf("native auth preview changed. Create a new preview")
+	}
 	if p.Component != nil && p.Component.Digest != componentPlanDigest(p) {
 		return fmt.Errorf("component preview changed. Create a new preview")
 	}

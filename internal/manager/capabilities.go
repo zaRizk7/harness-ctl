@@ -42,6 +42,9 @@ func (m tuiModel) actions() []string {
 		if state {
 			result = append(result, "reset")
 		}
+		if len(m.e.cfg.Harnesses[m.harness].Auth.Commands) > 0 {
+			result = append(result, "auth")
+		}
 		result = append(result, "uninstall")
 		if !inst.Managed && inst.Method != "unknown" {
 			result = append(result, "migrate")

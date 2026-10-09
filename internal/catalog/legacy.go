@@ -14,6 +14,13 @@ func NormalizeLegacy(specs []Spec) []Spec {
 	result := append([]Spec(nil), specs...)
 	defaults := Defaults()
 	for i, spec := range result {
+		if spec.Auth.Commands == nil && spec.Auth.Notes == nil && spec.Auth.CredentialFiles == nil && spec.Auth.RequiredArgument == nil {
+			for _, current := range defaults {
+				if current.ID == spec.ID {
+					result[i].Auth = current.Auth
+				}
+			}
+		}
 		if len(spec.LaunchRules) > 0 || len(spec.LaunchArgs) == 0 {
 			continue
 		}

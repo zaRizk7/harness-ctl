@@ -108,7 +108,7 @@ func (e *engine) buildSelfPlan(ctx context.Context, binary string, removeHarness
 	if removeState {
 		// These are exclusively manager metadata. Executables, harness auth and
 		// launch profiles are not manager state, even when held beneath Root.
-		for _, name := range []string{"registry.json", "accounts.age", "library.age", "catalog.json", "config.json", "installation.json", "snapshots", "operations", "downloads", "installer-homes", "restore-staging"} {
+		for _, name := range []string{"registry.json", "accounts.age", "credentials.age", "library.age", "catalog.json", "config.json", "installation.json", "snapshots", "operations", "downloads", "installer-homes", "restore-staging"} {
 			path := filepath.Join(e.cfg.Root, name)
 			if err := validateOwnedPath(e.cfg.Root, path); err != nil {
 				return nil, err

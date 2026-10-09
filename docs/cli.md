@@ -139,6 +139,11 @@ installation contracts, so changing an ID does not create a new native adapter.
 `additional_commands` configures read-only detection of unsupported commands.
 (Local workspace, 2026)
 
+Native authentication and encrypted profile commands are documented in the
+[authentication guide](authentication.md). Managed native-name launchers route
+authentication through the same selected installation and approval path.
+(Local workspace, 2026)
+
 ## References
 
 - Local workspace (2026). [CLI](../internal/manager/cli.go),

@@ -144,6 +144,11 @@ func (e *engine) executeLocked(ctx context.Context, p *plan, approval string, pr
 		if err = e.purgeAffected(p, meta.ID); err != nil {
 			return err
 		}
+		if p.Credential != nil {
+			if err := e.applyCredentials(p); err != nil {
+				return err
+			}
+		}
 	}
 	for _, dependency := range p.DependencyCommands {
 		progress(dependency.Description)
@@ -171,6 +176,18 @@ func (e *engine) executeLocked(ctx context.Context, p *plan, approval string, pr
 		if err = e.migrateState(p); err != nil {
 			return err
 		}
+	}
+	if p.Request.Action == "credentials" {
+		return e.applyCredentials(p)
+	}
+	if p.Request.Action == "auth" {
+		if e.authIO == nil {
+			return fmt.Errorf("native auth requires terminal streams")
+		}
+		if err := interactiveCommand(ctx, p.Steps[0], e.authIO.in, e.authIO.out); err != nil {
+			return fmt.Errorf("native authentication failed or was cancelled. Native output is not stored")
+		}
+		return nil
 	}
 	for _, step := range p.Steps {
 		progress(step.Description)
