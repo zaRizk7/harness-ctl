@@ -67,7 +67,11 @@ func fieldDigests(value map[string]any, fields map[string]category) map[string]s
 
 // resources returns s's classified native state and fingerprints without
 // reading unrelated homes. Linked/shared sources remain labelled and protected.
-func (e *engine) resources(s harnessSpec) ([]resource, error) {
+func (e *engine) resources(s harnessSpec) ([]resource, error) { return e.resourcesWithHome(s, true) }
+
+// resourcesWithHome scans s's selected roots. includeHome controls separate
+// HOME registrations, which must be omitted for explicit external inventory.
+func (e *engine) resourcesWithHome(s harnessSpec, includeHome bool) ([]resource, error) {
 	var result []resource
 	for _, root := range e.rootsFor(s) {
 		if root == e.cfg.Home || root == "/" || within(root, e.cfg.Root) {
@@ -162,7 +166,7 @@ func (e *engine) resources(s harnessSpec) ([]resource, error) {
 			result = append(result, r)
 		}
 	}
-	if s.ID == "claude" && !within(e.cfg.Root, e.stateRoot(s)) {
+	if includeHome && s.ID == "claude" && !within(e.cfg.Root, e.stateRoot(s)) {
 		path := filepath.Join(e.cfg.Home, ".claude.json")
 		if _, err := fileIO.stat(path); err == nil {
 			r := resource{Path: path, Root: e.cfg.Home, Category: settings, Owners: append([]string{s.ID}, s.SharedClients...), Format: "json", Note: "Shared Claude client configuration."}
@@ -179,7 +183,7 @@ func (e *engine) resources(s harnessSpec) ([]resource, error) {
 			result = append(result, r)
 		}
 	}
-	if s.ID == "codex" {
+	if includeHome && s.ID == "codex" {
 		skills, err := e.codexSkillResources()
 		if err != nil {
 			return nil, err
@@ -264,6 +268,9 @@ func applyState(r resource, req request) error {
 
 // resourceCategoryFor keeps Pi package caches in their native plugin category.
 func resourceCategoryFor(s harnessSpec, name string) category {
+	if s.ID == "codex" && name == ".tmp" {
+		return cache
+	}
 	if s.ID == "pi" && (name == "npm" || name == "git") {
 		return plugins
 	}

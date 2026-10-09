@@ -100,6 +100,15 @@ func (e *engine) componentEngine(inst installation, scope string) (*engine, harn
 			return nil, s, fmt.Errorf("there is no active launch profile")
 		}
 		copyEngine.cfg.StateRoots[s.ID] = nativeStateRoot(s, prof.Root)
+	} else if sourceScope(scope) {
+		root, ok := e.cfg.ComponentSources[s.ID][strings.TrimPrefix(scope, "source:")]
+		if !ok {
+			return nil, s, fmt.Errorf("unknown component source")
+		}
+		if err := rejectLinkedAncestors(root); err != nil {
+			return nil, s, err
+		}
+		copyEngine.cfg.StateRoots[s.ID] = root
 	} else if scope != "" && scope != "base" {
 		return nil, s, fmt.Errorf("unknown component scope")
 	}
@@ -116,7 +125,7 @@ func (e *engine) components(inst installation, scope string, cat category) ([]co
 	if err != nil {
 		return nil, err
 	}
-	resources, err := state.resources(s)
+	resources, err := state.resourcesWithHome(s, !sourceScope(scope))
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +375,9 @@ func (e *engine) planComponent(p *plan) error {
 		return fmt.Errorf("missing component request")
 	}
 	change := *p.Request.Component
+	if sourceScope(change.Scope) {
+		return fmt.Errorf("external component sources are read-only. Use native project/system controls or import a compatible copy through the library")
+	}
 	if err := validateCompatibility(p.Spec.ID, change); err != nil {
 		return err
 	}

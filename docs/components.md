@@ -15,7 +15,7 @@ and affected owners. Configuration values appear only in your editor.
 | `d`, `u`, Space | Disable, enable, or toggle the selected entry |
 | `x` | Preview removal of the selected entry |
 | `o`, then Space | Select each additional affected owner |
-| `p` | Switch between base state and an existing launch profile |
+| `p` | Cycle base, an existing profile and explicitly configured source roots |
 | `r` | Refresh the component list after browsing a directory |
 | Esc | Return to category selection, or leave management |
 
@@ -24,6 +24,22 @@ owners, then type `apply` and press Enter. Closing the editor without changes
 cancels the edit. Invalid requests return to the component list with an error.
 The scope label shows the state used by the selected launch. If a profile is
 active, management starts in that profile. (Local workspace, 2026)
+
+## External inventory
+
+`component_sources` in manager configuration declares native-format roots to
+rescan. For example, configure `{"claude":{"project":"/absolute/project/.claude",
+"system":"/absolute/system/claude"}}`. These sources are read-only. CLI inventory
+uses `components list --scope source:project claude skills`. The TUI `p` key cycles
+sources. Linked roots are rejected, and these reads omit separate HOME sources.
+The manager does not discover arbitrary projects or assume system mutation rights.
+(Local workspace, 2026)
+
+Native plugin ledgers also show non-user registrations, including direct project
+additions, with explicit read-only provenance. Their external payload paths are
+metadata, not ownership for deletion or rollback. Use native project/system
+controls for those mutations, or capture a compatible copy through the shared
+library with a separate approval. (Local workspace, 2026)
 
 ## Add/install requests
 
@@ -196,7 +212,7 @@ refresh. It lists names without source credentials. Add requires a source and
 expected marketplace name, `t` refreshes the selected catalog, `e` edits its
 source through a native remove/add preview, and `x` removes its user-scope
 declaration. There is no verified native marketplace enable/disable command.
-Other harnesses hide this category. (Local workspace, 2026)
+Other harnesses hide this category unless a verified adapter is available. (Local workspace, 2026)
 
 ```sh
 harness-ctl components list claude marketplaces
@@ -225,6 +241,21 @@ settings, so manually installed disabled plugins remain visible. Native manifest
 identify proprietary compatibility. Mods install as plugins and use the same
 harness-specific controls. Unknown local formats are labelled unverified.
 (Anthropic, 2026; Local workspace, 2026)
+
+## Additional native marketplaces
+
+Codex user-configured marketplaces support list, add, source edit, upgrade and
+remove through the existing component CLI/TUI transaction. Registrations are read
+from native TOML, including direct additions. Native Git snapshots under
+`.tmp/marketplaces` join encrypted recovery. Local source repositories remain
+externally owned. Source edit uses approved native remove/add, and the result must
+match the expected `.agents/plugins/marketplace.json` manifest name. Installed
+versions and configuration-layer policy can refuse unsupported commands.
+(OpenAI, 2026; Local workspace, 2026)
+
+Native contracts: [native marketplace CLI](https://github.com/openai/codex/blob/main/codex-rs/cli/src/marketplace_cmd.rs),
+[cache ownership](https://github.com/openai/codex/blob/main/codex-rs/core-plugins/src/installed_marketplaces.rs),
+[adapter](../internal/manager/marketplaces_codex.go).
 
 ## References
 

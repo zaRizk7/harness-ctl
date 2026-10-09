@@ -10,6 +10,7 @@ import (
 
 // claudePluginRegistration decodes native plugin scope and captured payload ownership.
 type claudePluginRegistration struct {
+	ProjectPath string `json:"projectPath,omitempty"`
 	Scope       string `json:"scope"`
 	InstallPath string `json:"installPath"`
 }

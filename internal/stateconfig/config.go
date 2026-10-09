@@ -74,7 +74,7 @@ func FieldCategory(key string) Category {
 		return MCP
 	case "skills", "skillpaths", "skillsources", "disabledskills":
 		return Skills
-	case "extraknownmarketplaces":
+	case "extraknownmarketplaces", "marketplaces":
 		return Marketplaces
 	case "packages", "plugin", "plugins", "extensions", "enabledplugins":
 		return Plugins

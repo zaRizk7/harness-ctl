@@ -20,6 +20,9 @@ import (
 // Item identifies a native registration or local asset. Values are never
 // part of the inventory display. Disabled registrations retain their full data.
 type Item struct {
+	ReadOnly          bool     `json:"read_only,omitempty"`
+	Note              string   `json:"note,omitempty"`
+	NativeScope       string   `json:"native_scope,omitempty"`
 	BuiltFor          []string `json:"built_for,omitempty"`
 	Name, Path, Field string
 	Subpath           string

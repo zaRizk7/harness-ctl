@@ -106,6 +106,14 @@ argument defaults and their POSIX representation. Direct launches and shims use
 that same policy. Remaining manager tests cover engine coordination and native
 adapter transactions across these modules. (Local workspace, 2026)
 
+`nativeauth` owns catalog-declared command matching and native argument validation.
+`credentials` owns compatible profile identities and declared file locations.
+Manager authentication runs the selected real process with its launch environment,
+while profile capture/restore uses the existing approved transaction and encrypted
+vault. Native output and credential bytes stay outside previews and journals.
+OS-held secrets and remote OAuth state remain native. Read-only external component
+sources never grant mutation ownership. (Local workspace, 2026)
+
 ## Agent documentation
 
 `AGENTS.md` routes project work. `.agents/skills/` contains the engineering

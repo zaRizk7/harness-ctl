@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -96,17 +97,23 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if key == "p" {
-			if _, exists := m.e.reg.Profiles[m.componentInstallation().ID]; !exists {
-				m.status = "No active launch profile. This screen manages base state."
+			scopes := m.componentScopes()
+			if len(scopes) == 1 {
+				m.status = "No active launch profile or explicit component sources. This screen manages base state."
 				return m, nil
 			}
-			if m.componentScope == "base" {
-				m.componentScope = "profile"
-			} else {
-				m.componentScope = "base"
-			}
+			index := slices.Index(scopes, m.componentScope)
+			m.componentScope = scopes[(index+1)%len(scopes)]
 			m.req.Owners = nil
 			return m, m.loadComponents()
+		}
+		if sourceScope(m.componentScope) && contains([]string{"a", "e", "enter", "d", "u", "space", "x", "t"}, key) {
+			m.status = "Read-only external source. Native controls retain project/system ownership."
+			return m, nil
+		}
+		if len(m.componentItems) > 0 && m.componentItems[m.cursor].ReadOnly && contains([]string{"e", "enter", "d", "u", "space", "x", "t"}, key) {
+			m.status = m.componentItems[m.cursor].Note
+			return m, nil
 		}
 		if key == "a" {
 			return m, m.editComponent(nil)
@@ -178,6 +185,9 @@ func (m tuiModel) componentKey(key string) (tea.Model, tea.Cmd) {
 // for the active component screen.
 func (m tuiModel) componentView() []string {
 	lines := []string{"Component management / " + m.componentScope + " state"}
+	if sourceScope(m.componentScope) {
+		lines = append(lines, "Read-only external inventory. Native controls retain ownership.")
+	}
 	switch m.screen {
 	case "component-groups":
 		var groups []string
@@ -204,6 +214,9 @@ func (m tuiModel) componentView() []string {
 			} else if item.Native {
 				status = "native managed"
 			}
+			if item.ReadOnly {
+				status = "external read-only"
+			}
 			rows = append(rows, item.Name+" ["+status+"]")
 		}
 		if len(rows) == 0 {
@@ -213,6 +226,9 @@ func (m tuiModel) componentView() []string {
 			if m.cursor < len(m.componentItems) {
 				item := m.componentItems[m.cursor]
 				lines = append(lines, "", "Source: "+item.Path, "Field: "+item.Field, "Owners: "+strings.Join(item.Owners, ", "))
+				if item.ReadOnly {
+					lines = append(lines, "Read-only: "+item.Note)
+				}
 				if item.Category == plugins {
 					compatibility := strings.Join(item.BuiltFor, ", ")
 					if compatibility == "" {

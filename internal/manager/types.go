@@ -38,25 +38,26 @@ var categories = stateconfig.Categories
 // config holds user-configurable paths, limits and native adapter contracts.
 // Defaults are provided by defaultConfig and validated before engine creation.
 type config struct {
-	Providers          []providerSpec    `json:"providers"`
-	MonitorWindowDays  int               `json:"monitor_window_days"`
-	MonitorMaxPages    int               `json:"monitor_max_pages"`
-	CatalogFile        string            `json:"catalog_file,omitempty"`
-	Harnesses          []harnessSpec     `json:"harnesses"`
-	AdditionalCommands []string          `json:"additional_commands"`
-	RefreshSeconds     int               `json:"refresh_seconds"`
-	Root               string            `json:"root"`
-	BinDir             string            `json:"bin_dir"`
-	Home               string            `json:"home"`
-	BackupDays         int               `json:"backup_days"`
-	ProbeSeconds       int               `json:"probe_seconds"`
-	OperationSeconds   int               `json:"operation_seconds"`
-	MaxSnapshotBytes   int64             `json:"max_snapshot_bytes"`
-	ReleaseChannel     string            `json:"release_channel"`
-	StateRoots         map[string]string `json:"state_roots"`
-	MetadataBytes      int64             `json:"metadata_bytes"`
-	InstallerBytes     int64             `json:"installer_bytes"`
-	PackageBytes       int64             `json:"package_bytes"`
+	ComponentSources   map[string]map[string]string `json:"component_sources,omitempty"`
+	Providers          []providerSpec               `json:"providers"`
+	MonitorWindowDays  int                          `json:"monitor_window_days"`
+	MonitorMaxPages    int                          `json:"monitor_max_pages"`
+	CatalogFile        string                       `json:"catalog_file,omitempty"`
+	Harnesses          []harnessSpec                `json:"harnesses"`
+	AdditionalCommands []string                     `json:"additional_commands"`
+	RefreshSeconds     int                          `json:"refresh_seconds"`
+	Root               string                       `json:"root"`
+	BinDir             string                       `json:"bin_dir"`
+	Home               string                       `json:"home"`
+	BackupDays         int                          `json:"backup_days"`
+	ProbeSeconds       int                          `json:"probe_seconds"`
+	OperationSeconds   int                          `json:"operation_seconds"`
+	MaxSnapshotBytes   int64                        `json:"max_snapshot_bytes"`
+	ReleaseChannel     string                       `json:"release_channel"`
+	StateRoots         map[string]string            `json:"state_roots"`
+	MetadataBytes      int64                        `json:"metadata_bytes"`
+	InstallerBytes     int64                        `json:"installer_bytes"`
+	PackageBytes       int64                        `json:"package_bytes"`
 }
 
 // defaultConfig returns independent documented defaults for home. Call validate
@@ -69,6 +70,9 @@ func defaultConfig(home string) config {
 // validate checks configured storage, catalog and account boundaries. Unsafe
 // paths, unsupported values and nonpositive limits return errors.
 func (c config) validate() error {
+	if err := c.validateComponentSources(); err != nil {
+		return err
+	}
 	if err := validateProviders(c.Providers); err != nil {
 		return err
 	}

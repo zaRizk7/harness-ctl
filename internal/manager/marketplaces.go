@@ -33,6 +33,10 @@ func (e *engine) marketplaceItems(inst installation, scope string) ([]componentI
 	if err != nil {
 		return nil, err
 	}
+	if s.ID == "codex" {
+		owners := append([]string{s.ID}, s.SharedClients...)
+		return codexMarketplaceItems(state.stateRoot(s), owners)
+	}
 	if s.ID != "claude" {
 		return nil, fmt.Errorf("no verified marketplace contract for this harness")
 	}
@@ -70,6 +74,11 @@ func addLedgerPlugins(root string, owners []string, items []componentItem) ([]co
 		if !strings.Contains(name, "@") {
 			return nil, fmt.Errorf("invalid native plugin identity")
 		}
+		for _, registration := range ledger.Plugins[name] {
+			if registration.Scope != "" && registration.Scope != "user" {
+				items = append(items, componentItem{Name: name + " [" + registration.Scope + "]", Category: plugins, Path: registration.InstallPath, Native: true, ReadOnly: true, NativeScope: registration.Scope, Note: "External native registration. Payload ownership and enablement are not claimed. Project: " + registration.ProjectPath, Owners: owners, BuiltFor: []string{"claude"}})
+			}
+		}
 		present := false
 		for _, item := range items {
 			if item.Native && item.Name == name {
@@ -93,6 +102,9 @@ func addLedgerPlugins(root string, owners []string, items []componentItem) ([]co
 // planMarketplace captures all selected local plugin data and uses explicit user scope.
 // Native remove/edit can uninstall dependent plugins. Enable/disable has no native contract.
 func (e *engine) planMarketplace(p *plan, change componentRequest) error {
+	if p.Spec.ID == "codex" {
+		return e.planCodexMarketplace(p, change)
+	}
 	if p.Spec.ID != "claude" || p.Install.ID == "" || p.Install.Method == "unknown" {
 		return fmt.Errorf("marketplace commands require a verified supported harness installation")
 	}
@@ -194,6 +206,9 @@ func (e *engine) planMarketplace(p *plan, change componentRequest) error {
 
 // verifyMarketplace checks the requested local registry state. Native exit alone is insufficient.
 func verifyMarketplace(p *plan) error {
+	if p.Spec.ID == "codex" {
+		return verifyCodexMarketplace(p)
+	}
 	records, err := readMarketplaces(p.StateRoot)
 	if err != nil {
 		return err
@@ -230,7 +245,7 @@ func verifyMarketplace(p *plan) error {
 func (m tuiModel) managementCategories() []category {
 	result := []category{}
 	for _, cat := range componentCategories {
-		if cat != marketplaces || m.e.cfg.Harnesses[m.harness].ID == "claude" {
+		if cat != marketplaces || contains([]string{"claude", "codex"}, m.e.cfg.Harnesses[m.harness].ID) {
 			result = append(result, cat)
 		}
 	}

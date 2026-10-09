@@ -70,17 +70,18 @@ local source using the
 The manager rescans user-scope native ledgers and assets, including entries added
 outside it. Native plugins/extensions use harness-specific contracts and detected
 manifests. Unknown formats remain unverified. Loader compatibility does not grant
-a proprietary license. Project/system sources and externally owned payloads do
-not have universal management support. (Project, 2026)
+a proprietary license. Explicit `component_sources` expose read-only project/system
+inventory with provenance. External payloads retain their ownership. (Project, 2026)
 
-The verified marketplace adapter provides list, add, source edit, refresh and
-remove without opening the native harness TUI. Save a request with
+Claude and Codex marketplace adapters provide list, add, source edit, refresh or
+upgrade, and remove without opening the native harness TUI. Save a request with
 `category: "marketplaces"`, `native: true`, `operation: "add"`, an expected
 `name` and a reviewed `source`. Other marketplace adapters remain unverified.
 (Project, 2026)
 
 ```sh
 harness-ctl components list claude marketplaces
+harness-ctl components list codex marketplaces
 harness-ctl components apply --preview claude marketplace.json
 harness-ctl components apply claude marketplace.json
 ```

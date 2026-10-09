@@ -11,8 +11,16 @@ proxies and hooks with local recovery, or reuse compatible recipes through the
 shared library. Independent account monitoring stays visible across the TUI.
 (Project, 2026)
 
-Build from source with the Go version in `go.mod`. A binary release has not yet
-been published. Start with the [Wiki installation tutorial](https://github.com/zaRizk7/harness-ctl/wiki/Installation):
+The release bootstrap selects your macOS architecture and verifies the binary
+before setup. Check [release availability](https://github.com/zaRizk7/harness-ctl/releases)
+and the [Wiki installation tutorial](https://github.com/zaRizk7/harness-ctl/wiki/Installation)
+for pinned versions, headless setup and custom locations. (Project, 2026)
+
+```sh
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh | sh
+```
+
+For source builds, use your installed Go version from `go.mod`:
 
 ```sh
 git clone https://github.com/zaRizk7/harness-ctl.git
@@ -32,6 +40,8 @@ versioned with the code:
 4. [CLI and batch guide](docs/cli.md): non-TUI operations, launching, PATH and self-uninstall.
 5. [Components](docs/components.md): skills, MCP, native extensions, connectors, hooks and proxies.
 6. [Accounts](docs/accounts.md): keys, subscriptions, billing and five-second monitoring.
+   [Native authentication](docs/authentication.md) covers routed login and approved
+   encrypted credential profiles.
 7. [Architecture](docs/architecture.md): code ownership, transactions and Go API contracts.
 8. [Acceptance checkpoint](docs/implementation.md): verification evidence and material limits.
 9. [Verification](docs/testing.md): unit/integration boundaries and strict coverage target.
@@ -54,7 +64,7 @@ for the executable, functionality-owned `internal` packages, `scripts` for
 automation and `docs` for guides and Wiki sources. CI verifies both macOS
 architectures and enforces exact production statement coverage. (Project, 2026)
 
-Consumer subscription reporting, project/system component inventory and other
+Consumer subscription reporting, external payload mutations and other
 marketplace adapters still have explicit gaps. Source tests use synthetic
 boundaries, so live vendor compatibility remains unverified. Review
 [remaining boundaries](docs/limitations.md) before relying on those integrations.
