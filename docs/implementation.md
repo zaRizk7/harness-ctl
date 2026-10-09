@@ -9,6 +9,20 @@ items are recorded below.
 
 ## Active native-management checkpoint, 2026-10-09
 
+Final review reproduced a retained-launcher regression after manager removal
+with both manager-state choices. Native auth prefixes unconditionally executed
+the removed router. The regression failed first with exit status 126. The narrow
+launcher fix checks router executability and otherwise lets native authentication
+reach the retained real harness with its recorded profile environment and no
+session approval arguments. Ordinary sessions keep their security policy. Focused
+race tests passed for routing and both removal choices. The full quality gate
+passed formatting, vet and race tests, with manager tests at 413.976 seconds.
+The unchanged strict race-enabled coverage gate then passed at exactly
+7,972/7,972 production Go statements. The correction is candidate v0.1.1,
+with all-files directive hooks passed and commit/push hooks and publication pending.
+Existing v0.1.0 launchers require approved regeneration. No live state was used.
+(Local workspace, 2026)
+
 The user authorized completing the remaining gaps and a functional published
 bootstrap. Native authentication routing and encrypted native credential profiles
 are now explicit requirements A4–A6 and I4 in the ledger. Repository code-quality,

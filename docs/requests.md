@@ -106,6 +106,13 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
   small support packages. Refactor one ownership boundary at a time with proof.
 - F6: Comment presence does not establish complete Go contracts. The checkpoint
   and component capability table also have stale Pi support descriptions.
+- F7: Native auth routing introduced a manager dependency in retained launchers.
+  Both self-removal state choices reproduced a missing-router failure. New or
+  regenerated launchers now fall back to the scoped native auth command when the
+  manager is unavailable, retaining ordinary launch security defaults. The
+  focused race regressions and full quality gate passed. Strict race-enabled
+  coverage passed at exactly 7,972/7,972 production statements. All-files hooks
+  passed. Commit/push hooks and v0.1.1 publication are pending.
 
 (Local workspace, 2026)
 

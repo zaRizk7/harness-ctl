@@ -136,6 +136,8 @@ func (e *engine) authCLI(ctx context.Context, args []string, in io.Reader, out i
 
 // authShim writes native-prefix routing before native HOME/state exports. This
 // lets the manager load its own user configuration and select the scoped process.
+// An absent router falls through to the retained scoped harness without session
+// defaults, keeping native authentication usable after manager self-removal.
 func (e *engine) authShim(body *strings.Builder, inst installation, s harnessSpec) error {
 	prefixes := map[string]bool{}
 	for _, args := range s.Auth.Commands {
@@ -156,7 +158,7 @@ func (e *engine) authShim(body *strings.Builder, inst installation, s harnessSpe
 		configArgs = "--config " + shellQuote(e.sourceConfig) + " " + configArgs
 	}
 	for _, prefix := range sortedKeys(prefixes) {
-		fmt.Fprintf(body, "  %s) exec %s %s auth --install-id %s route %s \"$@\" ;;\n", shellQuote(prefix), shellQuote(binary), configArgs, shellQuote(inst.ID), shellQuote(s.ID))
+		fmt.Fprintf(body, "  %s) if [ -x %s ]; then exec %s %s auth --install-id %s route %s \"$@\"; fi; HARNESS_CTL_NATIVE=1 ;;\n", shellQuote(prefix), shellQuote(binary), shellQuote(binary), configArgs, shellQuote(inst.ID), shellQuote(s.ID))
 	}
 	fmt.Fprintln(body, "esac")
 	return nil

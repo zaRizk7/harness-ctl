@@ -130,6 +130,59 @@ func TestNativeAuthShimDelegatesBeforeScopedEnvironment(t *testing.T) {
 	}
 }
 
+func TestNativeAuthShimSurvivesManagerRemoval(t *testing.T) {
+	for _, discardState := range []bool{false, true} {
+		t.Run(map[bool]string{false: "retain-state", true: "discard-state"}[discardState], func(t *testing.T) {
+			e, _ := testEngine(t)
+			t.Setenv("HARNESS_CTL_NATIVE", "0")
+			s, _ := e.specFor("claude")
+			inst := syntheticInstall(t, e, s, "1")
+			e.reg.Installs = []installation{inst}
+			prof := profile{Root: filepath.Join(e.cfg.Root, "profiles", inst.ID), Disabled: map[category]bool{}}
+			e.reg.Profiles[inst.ID] = prof
+			if err := atomicWrite(inst.Path, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" \"$CLAUDE_CONFIG_DIR\" \"$HOME\"\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			manager := filepath.Join(e.cfg.Home, "harness-ctl")
+			if err := atomicWrite(manager, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			old := executablePath
+			t.Cleanup(func() { executablePath = old })
+			executablePath = func() (string, error) { return manager, nil }
+			if err := e.writeShim(inst); err != nil {
+				t.Fatal(err)
+			}
+			if err := writeJSON(e.statePath, e.reg); err != nil {
+				t.Fatal(err)
+			}
+			p, err := e.buildSelfPlan(context.Background(), manager, false, discardState, request{Preserve: keepAll()})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := e.executeSelf(context.Background(), p, p.ID, nil); err != nil {
+				t.Fatal(err)
+			}
+			shim := filepath.Join(e.cfg.BinDir, s.Command)
+			cmd := exec.Command(shim, "auth", "login", "--console")
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("retained native auth launcher failed: %v: %s", err, output)
+			}
+			state := nativeStateRoot(s, prof.Root)
+			home := filepath.Join(prof.Root, "home")
+			if want := strings.Join([]string{"auth", "login", "--console", state, home}, "\n") + "\n"; string(output) != want {
+				t.Fatalf("native auth scope/arguments changed: %q, want %q", output, want)
+			}
+			output, err = exec.Command(shim, "ordinary-session").Output()
+			want := append(launchPolicy(s).Args([]string{"ordinary-session"}, false), state, home)
+			if err != nil || string(output) != strings.Join(want, "\n")+"\n" {
+				t.Fatalf("retained secure launch policy changed: %q, %v", output, err)
+			}
+		})
+	}
+}
+
 func TestNativeCredentialProfilesCaptureRestoreWithoutExposingSecrets(t *testing.T) {
 	e, _ := testEngine(t)
 	s, _ := e.specFor("codex")

@@ -122,6 +122,11 @@ safety. The recorded manager launcher and installation receipt are removed, and 
 and shared runtimes are retained. Both shipped architecture-specific binary names
 and `harness-ctl` support self-removal. (Local workspace, 2026)
 
+Launchers generated from v0.1.1 retain native authentication after manager
+removal. Older v0.1.0 launchers need approved regeneration first. See
+[native authentication](authentication.md) for the upgrade caveat.
+(Local workspace, 2026)
+
 ## Catalog configuration
 
 Explicit [setup](setup.md) initializes `<root>/catalog.json`. Startup uses this editable user-owned catalog when present. `config` prints the complete active JSON configuration. Edit its `harnesses`
