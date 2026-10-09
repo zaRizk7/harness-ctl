@@ -57,13 +57,27 @@ launch rules. Native install/format contracts remain adapter-owned.
 
 ## HTTPS bootstrap
 
-The reviewed bootstrap lives at
-[scripts/install.sh](https://github.com/zaRizk7/harness-ctl/blob/main/scripts/install.sh).
-Download it to a file and inspect it before execution. For a published binary,
-provide its explicit HTTPS asset URL and trusted SHA-256. Binary assets are not
-yet published, so use the source path above today. The
+The bootstrap selects your architecture and checks the binary against the
+selected release's SHA-256 metadata before running setup. It supports interactive
+setup through `/dev/tty` and approved unattended setup. These commands require
+published assets. See [Releases](https://github.com/zaRizk7/harness-ctl/releases)
+for availability. (Project, 2026)
+
+```sh
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh \
+  | sh -s -- --headless --yes
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.0/install.sh \
+  | sh -s -- --version v0.1.0
+```
+
+For inspection, download
+[scripts/install.sh](https://github.com/zaRizk7/harness-ctl/blob/main/scripts/install.sh)
+to a file before execution. Explicit HTTPS binary URLs and trusted SHA-256
+overrides remain supported. The
 [setup guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/setup.md) contains
-bootstrap flags and release asset conventions. (Project, 2026)
+prefix, direct/symlink, PATH and checksum options. Checksums use the publisher's
+HTTPS metadata and are not independent signatures. (Project, 2026)
 
 ## References
 

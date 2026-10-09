@@ -26,10 +26,31 @@ user authorized documenting and resolving gaps after the read-only audit.
   after approval. Library edits do not silently change applied copies.
 - D8: Superseded by the user's public publication request. Use `gh` to publish
   `zaRizk7/harness-ctl` and its Wiki. Keep source builds and future binary releases
-  distinct. No first binary version or release publication has been selected.
+  distinct. The later functional-bootstrap request authorizes binary publication.
+  The first candidate version is v0.1.0, subject to the recorded verification gates.
 - D9: Follow the pinned coding directives, use native project role definitions,
   retain model/harness-agnostic implementation instructions, and omit commit
   co-author trailers. Delegation requires an explicit user request.
+
+(User, 2026)
+
+## Native authentication and distribution, 2026-10-09
+
+- A4: Route native authentication through manager CLI/TUI and generated harness
+  launchers. `claude auth login` must reach the manager through its owned launcher,
+  then execute the selected real harness command. Native OAuth remains native.
+- A5: Opt-in encrypted profiles capture supported file-backed native credentials
+  and explicitly restore them to compatible installations after approval.
+  OS Keychain credentials remain in the native store. API inference/report keys
+  remain separate encrypted account records. Never automatically overwrite or
+  synchronize native token refresh state.
+- A6: Prefer native usage/quota information where a verified reporting interface
+  exists. Native interactive statistics remain a fallback when no safe structured
+  export is established. Do not make inference calls to estimate subscription
+  usage or scrape private consumer APIs.
+- I4: Publish a verified macOS binary distribution and provide the requested
+  `curl ... | sh` bootstrap, including interactive terminal handoff and unattended
+  `--headless --yes`. Preserve private prefix, symlink/direct and checksum options.
 
 (User, 2026)
 
@@ -51,11 +72,11 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | H6 | Secure automatic launch defaults, with labelled native fallback | Implemented, F1. Independent catalog launch rules preserve security defaults for model-only overrides in direct launches and shims. Unchanged legacy policies normalize without rewriting user edits. |
 | I1 | Remove the hard-coded Go harness catalog | Present. JSON metadata is configurable. Native format/install contracts remain adapter code. |
 | I2 | Install catalog.json in the manager's user directory | Present. Non-overwriting setup and startup loading. |
-| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | Present. Authorized GitHub bootstrap destination is documented. Source installation is available. Binary assets await an approved release version. |
+| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | POSIX bootstrap implemented with automatic release checksums and architecture, pinned versions and explicit URL/hash overrides. Synthetic regression tests and shell/workflow validation pass. Actual published-asset installation remains pending under I4. |
 | C1 | Recognize harness-specific plugins/extensions and manage their native contracts | Implemented, F3. Imports and captured library files share manifest detection, including Pi. Unknown formats make no compatibility claim. |
 | C2 | One umbrella for shareable components | Present. Encrypted reusable library with approved selected-harness application. Retain compatibility and recovery guards. |
-| C3 | Track components installed outside harness-ctl | Partial. User-scope ledgers/assets are rescanned. Project/system inventory and external payload ownership are separate implementation/safety boundaries. Do not promise universal tracking. |
-| C4 | Manage marketplaces where harnesses support them, including non-TUI operation | Present for the verified Claude adapter. List/add/source-edit/refresh/remove. Other adapters are unverified, not proven impossible. |
+| C3 | Track components installed outside harness-ctl | Expanded. Direct native additions are rescanned. Explicit component_sources expose read-only project/system inventory. Non-user plugin ledger registrations retain provenance. External payload mutations and unconfigured roots remain ownership/scope boundaries. |
+| C4 | Manage marketplaces where harnesses support them, including non-TUI operation | Claude and Codex native adapters support list/add/source-edit/refresh-or-upgrade/remove. Scoped caches/configuration join encrypted recovery. Local source repositories remain external. Other adapters and live vendor execution remain unverified. |
 | A1 | Independent API keys/subscriptions, usage/limits/billing, real-time monitoring defaulting to 5s | Implemented in part, F2. Optional documented app-server subscription quota reporting and read-only Google billing export costs now exist. Required export schema and reporting-source identity now have passing regressions. Other consumer adapters remain unverified. Upstream freshness remains a provider constraint. |
 | A2 | Configurable external providers such as OpenRouter without tight identity coupling | Present. Identity, reporting adapter, environment and credentials are configured separately. |
 | A3 | Compact monitoring throughout the TUI with a key for complete information | Present UI. F2 details and global polling. Actual available data remains subject to A1. |
@@ -64,7 +85,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D3 | Convert subagent roles to native project configurations | Five native definitions parsed and validated with inherited models. Runtime delegation was not exercised because it was not authorized. |
 | D4 | Model/harness-agnostic implementation-agent documentation | Present in instruction prose. Native paths and upstream provenance URLs retain their names. |
 | D5 | MIT license | Present. |
-| E1 | 100% production coverage and unit/integration testability | Passed the unchanged strict race-enabled gate at exactly 7,255/7,255 production Go statements. Unit, integration and synthetic PTY evidence is recorded below. Coverage does not prove every acceptance condition is correct or cover shell execution. |
+| E1 | 100% production coverage and unit/integration testability | The fresh strict race-enabled gate passed at exactly 7,972/7,972 production Go statements, including obsolete-profile management with current restore compatibility. The isolated native TUI smoke passed. Coverage does not prove every acceptance condition or quantify shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
 | P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Published through gh at zaRizk7/harness-ctl, with main as the default branch. Existing Go ownership is retained, with pinned CI, draft-release automation, contribution/security guides and review templates. Seven Wiki pages plus sidebar are published and match their versioned sources. Publication evidence and per-commit CI links are in the checkpoint. |
 

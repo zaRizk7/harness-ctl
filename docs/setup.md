@@ -6,29 +6,52 @@ access and makes removal explicit. A direct binary directory is also supported.
 Shell startup changes require an explicit `--shell-file` path and approval. (Local workspace, 2026)
 
 The authorized destination is [zaRizk7/harness-ctl](https://github.com/zaRizk7/harness-ctl).
-No binary release has been published yet. Build from source today, or use the
-bootstrap after an approved release supplies assets and checksums. The installer
-requires an explicit HTTPS binary URL and publisher SHA-256.
-Download the installer to a file, inspect it, then run it. The installer verifies
-the binary before executing its setup interface. Obtain the checksum through a
-trusted publisher channel. Pin a reviewed commit for the installer URL when
-reproducibility is needed. (User decisions, 2026; Local workspace, 2026)
+The bootstrap selects Apple Silicon or Intel and verifies the release binary
+against its SHA-256 entry before running setup. The default resolves the latest
+published release. Pin a version for repeatable installation. Release metadata
+comes from the same publisher over HTTPS, so a checksum detects changed bytes
+but does not provide an independent publisher signature. (Local workspace, 2026)
 
 ```sh
-curl --fail --location --proto '=https' --proto-redir '=https' --tlsv1.2 \
-  -o install.sh https://raw.githubusercontent.com/zaRizk7/harness-ctl/main/scripts/install.sh
-# Inspect install.sh before running it.
-bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256
-bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --headless --yes
-bash install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --direct
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh | sh
+# Unattended setup. Existing destinations are still refused.
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh \
+  | sh -s -- --headless --yes
+# Pin both installer and binary release.
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.0/install.sh \
+  | sh -s -- --version v0.1.0
 ```
 
-The binary URL convention after a release is
-`https://github.com/zaRizk7/harness-ctl/releases/download/TAG/harness-ctl-darwin-ARCH`,
-with `ARCH` equal to `arm64` or `amd64` and an approved version tag. Obtain the
-matching entry from that release's `SHA256SUMS` through a trusted publisher
-channel. These are conventions for future releases, not currently downloadable
-assets. (Local workspace, 2026)
+The pinned examples use `v0.1.0`. Check [Releases](https://github.com/zaRizk7/harness-ctl/releases)
+and the [latest publication checkpoint](https://github.com/zaRizk7/harness-ctl/blob/main/docs/implementation.md)
+for availability and published-asset verification. These commands require
+published release assets. The installer stops on absent
+assets, missing/duplicate checksum entries, wrong architecture or mismatched
+bytes. Interactive setup reopens `/dev/tty`, so the setup TUI can receive input
+when installation is piped into `sh`. Unattended use requires both `--headless`
+and `--yes`. The installer does not install Go or use administrator access.
+(Local workspace, 2026)
+
+For inspection before execution, download the installer instead. A trusted
+explicit checksum and custom HTTPS binary URL remain supported. (Local workspace, 2026)
+
+```sh
+curl -fsSL -o install.sh \
+  https://raw.githubusercontent.com/zaRizk7/harness-ctl/main/scripts/install.sh
+# Inspect install.sh before running it.
+sh install.sh --version v0.1.0 --prefix "$HOME/.local/lib/harness-ctl" \
+  --link-dir "$HOME/.local/bin"
+sh install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --direct
+sh install.sh --version v0.1.0 --shell-file "$HOME/.zshrc" --headless
+```
+
+`HARNESS_CTL_VERSION` selects the release. `HARNESS_CTL_REPOSITORY` selects a
+reviewed `owner/repository` mirror with the same asset names.
+`HARNESS_CTL_DOWNLOAD_SECONDS` bounds each download and defaults to 120 seconds.
+Explicit binary/checksum environment overrides are `HARNESS_CTL_BINARY_URL` and
+`HARNESS_CTL_SHA256`. Changes to a mirror select a different publisher trust
+boundary. No existing catalog or configuration is overwritten during setup.
+(Local workspace, 2026)
 
 ## Source installation
 

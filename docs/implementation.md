@@ -7,6 +7,47 @@ and the user's authorization to resolve its gaps. Current verification and open
 items are recorded below.
 (User, 2026; Local workspace, 2026)
 
+## Active native-management checkpoint, 2026-10-09
+
+The user authorized completing the remaining gaps and a functional published
+bootstrap. Native authentication routing and encrypted native credential profiles
+are now explicit requirements A4–A6 and I4 in the ledger. Repository code-quality,
+test-first and lean-build instructions apply. No live harness/account verification
+is authorized. API keys remain manager encrypted accounts. OAuth runs through
+native commands, with opt-in approved capture/restore of supported native files.
+OS Keychain credentials remain native. The installer regression failed against
+the old script and now passes for POSIX shell, automatic checksums/architecture,
+pinned versions, invalid tags and checksum mismatch. Auth regression failed with
+unknown lifecycle action, and the selected-command regression now passes.
+Native CLI/TUI authentication, launcher routing and encrypted credential profile
+capture/restore/removal are implemented. Focused tests prove selected installation
+and profile scopes, private/encrypted storage, shared-owner approval, stale native
+refresh rejection, partial-write rollback and permanent profile erasure. Explicit
+read-only project/system component sources and non-user native plugin ledger
+provenance are implemented. Codex marketplaces use native commands, TOML inventory,
+scoped cache recovery and local-source fingerprints. The full non-race suite and
+the existing full race check passed. The unchanged strict race-enabled coverage
+gate passed at exactly 7,961/7,961 production Go statements. Its first run exposed
+one missing legacy-auth normalization path despite rounded 100.0%, and the new
+regression covers that path without changing the production source or gate.
+The isolated native CLI/TUI smoke passed status routing and capture previews with
+zero credential/recovery writes. Both versioned macOS architectures built. POSIX
+shell, actionlint workflow, 25 Markdown/local links and 14 JSON-example checks
+passed before release-note creation. The fresh quality gate is running. The
+candidate first release is v0.1.0. No new commit or binary release has been made.
+
+Subsequent credential review found that current catalog changes prevented listing
+or removing saved copies. The obsolete-profile regression failed first. Stored
+schema validation is now separate from current restore compatibility, preserving
+removal while refusing unsafe application. Focused race tests passed. This small
+source change supersedes the 7,961-statement result for final publication. Fresh
+strict race-enabled coverage now passes at exactly 7,972/7,972 production Go
+statements. The sequential quality gate passed formatting, vet and the complete
+race suite. The manager package took 422.290 seconds. All-files directive hooks
+also passed. No gate was weakened. The candidate remains unpublished until the
+atomic commit, remote CI and actual distribution checks below finish.
+(User, 2026; Local workspace, 2026)
+
 ## Publication checkpoint, 2026-10-09
 
 The user authorized `gh` publication of the public repository

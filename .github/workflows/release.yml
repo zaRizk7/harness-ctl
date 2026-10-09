@@ -32,8 +32,11 @@ jobs:
           mkdir release-assets
           cp downloaded/harness-ctl-darwin-arm64/harness-ctl-darwin-arm64 release-assets/
           cp downloaded/harness-ctl-darwin-amd64/harness-ctl-darwin-amd64 release-assets/
+          gh api "repos/$GH_REPO/contents/scripts/install.sh?ref=$RELEASE_TAG" \
+            --jq .content | base64 --decode > release-assets/install.sh
+          chmod 755 release-assets/install.sh
           cd release-assets
-          sha256sum harness-ctl-darwin-arm64 harness-ctl-darwin-amd64 > SHA256SUMS
+          sha256sum harness-ctl-darwin-arm64 harness-ctl-darwin-amd64 install.sh > SHA256SUMS
       - name: Create draft for maintainer review
         run: |
           cat > release-notes.md <<'NOTES'

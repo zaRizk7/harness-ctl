@@ -1,9 +1,9 @@
 # Maintainer publishing
 
 The public destination is [zaRizk7/harness-ctl](https://github.com/zaRizk7/harness-ctl).
-The repository and Wiki may be published. No first binary release version has
-been selected. Source builds are available immediately. Do not describe an
-unpublished draft or CI artifact as an installed, signed or notarized release.
+The repository, Wiki and functional binary bootstrap may be published. The first
+candidate version is v0.1.0. Do not describe an unpublished draft or CI artifact
+as an installed, signed or notarized release.
 (User, 2026; Local workspace, 2026)
 
 ## Binary releases
@@ -13,21 +13,23 @@ unpublished draft or CI artifact as an installed, signed or notarized release.
    Choose a version after review, then create and push its `vMAJOR.MINOR.PATCH`
    tag using the normal hooks.
 2. **A2 Draft.** The tag workflow reuses CI, verifies both macOS architectures,
-   builds versioned binaries and creates a draft with `SHA256SUMS`. Action
+   builds versioned binaries and creates a draft with `install.sh` and
+   `SHA256SUMS`. The installer is fetched from the same release tag. Action
    dependencies are pinned to commit IDs. Only the draft job has repository
    write permission.
 3. **A3 Publish.** Review the draft's artifacts and checksums, document concrete
    changes and limitations, and smoke-test installation on disposable machines.
-   Publish the draft only after the release is approved. Binary signing and
+   The user authorized publication after verification. Binary signing and
    notarization are not configured.
 
 (Local workspace, 2026)
 
-Published asset names are `harness-ctl-darwin-arm64` and
-`harness-ctl-darwin-amd64`. A release checksum verifies bytes against its metadata.
-It does not authenticate a compromised publisher account. The bootstrap
-requires an explicit HTTPS asset URL and trusted SHA-256. Pin both the installer
-source and the release rather than silently following `latest`. (Local workspace, 2026)
+Published assets are `harness-ctl-darwin-arm64`, `harness-ctl-darwin-amd64`,
+`install.sh` and `SHA256SUMS`. The bootstrap resolves the architecture and checksum
+from the selected release, then verifies the binary before executing setup.
+Explicit HTTPS asset URLs and trusted SHA-256 overrides remain available. A
+release checksum does not authenticate a compromised publisher account. Pin both
+the installer source and binary release for repeatability. (Local workspace, 2026)
 
 ## Wiki sources
 
