@@ -18,10 +18,32 @@ session approval arguments. Ordinary sessions keep their security policy. Focuse
 race tests passed for routing and both removal choices. The full quality gate
 passed formatting, vet and race tests, with manager tests at 413.976 seconds.
 The unchanged strict race-enabled coverage gate then passed at exactly
-7,972/7,972 production Go statements. The correction is candidate v0.1.1,
-with all-files directive hooks passed and commit/push hooks and publication pending.
-Existing v0.1.0 launchers require approved regeneration. No live state was used.
+7,972/7,972 production Go statements. All-files, commit, message and normal
+pre-push hooks passed. The conventional fix commit is
+`7aa45fdd4b0bf8e5a941522ca28869cddf629917`, with an empty body and clean tree.
+Source `main` and the annotated v0.1.1 tag were pushed atomically at that commit.
+[Source CI](https://github.com/zaRizk7/harness-ctl/actions/runs/37938365449) and
+[release CI](https://github.com/zaRizk7/harness-ctl/actions/runs/37938366046) passed
+on both native architectures. Release arm64 independently covered exactly
+7,972/7,972 statements, and both versioned builds printed `harness-ctl v0.1.1`.
+The reviewed [v0.1.1 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.1.1)
+is public. All four assets match GitHub digests, the checksum manifest and the
+tagged installer. Draft direct/symlink setup and actual public latest/pinned
+headless and interactive installation passed in disposable Apple Silicon homes.
+Private modes, PATH preservation, five-second configuration, version and zero
+credential/recovery writes passed. Intel's public bootstrap was not locally
+exercised. Wiki guidance was published at
+`5ee9d71e72da8fc171011e2a8b25044b33993df8`, with all eight files matching their
+versioned sources. Existing v0.1.0 launchers require approved regeneration. No
+live state was used. Remaining project gaps and provider constraints stay in the
+[limitations guide](limitations.md).
 (Local workspace, 2026)
+
+A Go-driver sample showed cached test-input validation during a long commit-hook
+delay. That attempt was stopped, workspace test results were expired and the
+normal hook passed with fresh tests. The subsequent pre-push hook used an
+isolated workspace cache. No configured check or production source was changed
+to shorten verification. (Local workspace, 2026)
 
 The user authorized completing the remaining gaps and a functional published
 bootstrap. Native authentication routing and encrypted native credential profiles

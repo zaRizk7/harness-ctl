@@ -61,7 +61,7 @@ launch rules. Native install/format contracts remain adapter-owned.
 The bootstrap selects your architecture and checks the binary against the
 selected release's SHA-256 metadata before running setup. It supports interactive
 setup through `/dev/tty` and approved unattended setup. These commands require
-published assets. [v0.1.0](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.1.0)
+published assets. [v0.1.1](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.1.1)
 is public with both macOS architectures. Actual latest/pinned headless and
 interactive installation passed on Apple Silicon. Intel has native CI
 quality/build/version proof. Binary installation does not require Go.
@@ -71,8 +71,8 @@ quality/build/version proof. Binary installation does not require Go.
 curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh | sh
 curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh \
   | sh -s -- --headless --yes
-curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.0/install.sh \
-  | sh -s -- --version v0.1.0
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.1/install.sh \
+  | sh -s -- --version v0.1.1
 ```
 
 For inspection, download

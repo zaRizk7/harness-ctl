@@ -18,11 +18,11 @@ curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/insta
 curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/latest/download/install.sh \
   | sh -s -- --headless --yes
 # Pin both installer and binary release.
-curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.0/install.sh \
-  | sh -s -- --version v0.1.0
+curl -fsSL https://github.com/zaRizk7/harness-ctl/releases/download/v0.1.1/install.sh \
+  | sh -s -- --version v0.1.1
 ```
 
-The pinned examples use `v0.1.0`. Check [Releases](https://github.com/zaRizk7/harness-ctl/releases)
+The pinned examples use `v0.1.1`. Check [Releases](https://github.com/zaRizk7/harness-ctl/releases)
 and the [latest publication checkpoint](https://github.com/zaRizk7/harness-ctl/blob/main/docs/implementation.md)
 for availability and published-asset verification. These commands require
 published release assets. The installer stops on absent
@@ -39,10 +39,10 @@ explicit checksum and custom HTTPS binary URL remain supported. (Local workspace
 curl -fsSL -o install.sh \
   https://raw.githubusercontent.com/zaRizk7/harness-ctl/main/scripts/install.sh
 # Inspect install.sh before running it.
-sh install.sh --version v0.1.0 --prefix "$HOME/.local/lib/harness-ctl" \
+sh install.sh --version v0.1.1 --prefix "$HOME/.local/lib/harness-ctl" \
   --link-dir "$HOME/.local/bin"
 sh install.sh --url BINARY_HTTPS_URL --sha256 PUBLISHER_SHA256 --direct
-sh install.sh --version v0.1.0 --shell-file "$HOME/.zshrc" --headless
+sh install.sh --version v0.1.1 --shell-file "$HOME/.zshrc" --headless
 ```
 
 `HARNESS_CTL_VERSION` selects the release. `HARNESS_CTL_REPOSITORY` selects a
