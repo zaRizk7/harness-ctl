@@ -72,7 +72,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | H6 | Secure automatic launch defaults, with labelled native fallback | Implemented, F1. Independent catalog launch rules preserve security defaults for model-only overrides in direct launches and shims. Unchanged legacy policies normalize without rewriting user edits. |
 | I1 | Remove the hard-coded Go harness catalog | Present. JSON metadata is configurable. Native format/install contracts remain adapter code. |
 | I2 | Install catalog.json in the manager's user directory | Present. Non-overwriting setup and startup loading. |
-| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | POSIX bootstrap implemented with automatic release checksums and architecture, pinned versions and explicit URL/hash overrides. Synthetic regression tests and shell/workflow validation pass. Actual published-asset installation remains pending under I4. |
+| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | Implemented and published in v0.1.0. Actual latest/pinned curl installation passed headless direct/symlink and interactive TTY setup on Apple Silicon, including checksums, private modes, PATH preservation and clean exit. Intel native CI passed quality/build/version checks. Signing/notarization remain unconfigured. |
 | C1 | Recognize harness-specific plugins/extensions and manage their native contracts | Implemented, F3. Imports and captured library files share manifest detection, including Pi. Unknown formats make no compatibility claim. |
 | C2 | One umbrella for shareable components | Present. Encrypted reusable library with approved selected-harness application. Retain compatibility and recovery guards. |
 | C3 | Track components installed outside harness-ctl | Expanded. Direct native additions are rescanned. Explicit component_sources expose read-only project/system inventory. Non-user plugin ledger registrations retain provenance. External payload mutations and unconfigured roots remain ownership/scope boundaries. |
@@ -85,9 +85,9 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D3 | Convert subagent roles to native project configurations | Five native definitions parsed and validated with inherited models. Runtime delegation was not exercised because it was not authorized. |
 | D4 | Model/harness-agnostic implementation-agent documentation | Present in instruction prose. Native paths and upstream provenance URLs retain their names. |
 | D5 | MIT license | Present. |
-| E1 | 100% production coverage and unit/integration testability | The fresh strict race-enabled gate passed at exactly 7,972/7,972 production Go statements, including obsolete-profile management with current restore compatibility. The isolated native TUI smoke passed. Coverage does not prove every acceptance condition or quantify shell execution. |
+| E1 | 100% production coverage and unit/integration testability | Local and release CI strict race-enabled gates passed at exactly 7,972/7,972 production Go statements, including obsolete-profile management with current restore compatibility. Native TUI and actual public installer smokes passed. Coverage does not prove every acceptance condition or quantify shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
-| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Published through gh at zaRizk7/harness-ctl, with main as the default branch. Existing Go ownership is retained, with pinned CI, draft-release automation, contribution/security guides and review templates. Seven Wiki pages plus sidebar are published and match their versioned sources. Publication evidence and per-commit CI links are in the checkpoint. |
+| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository, v0.1.0 binaries/installer/checksums and seven Wiki pages plus sidebar are public. Both architecture CI jobs passed. Existing Go ownership, pinned CI, exercised release automation and review/security guides remain. Exact verification and remaining gaps are in the checkpoint. |
 
 (User, 2026; Local workspace, 2026)
 
@@ -109,7 +109,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 
 (Local workspace, 2026)
 
-## Resumption checkpoint, 2026-10-09
+## Historical audit-fix checkpoint, 2026-10-09
 
 The non-race aggregate audit passed all package tests at 7,178/7,208 statements
 before final fixes. Regression-first fixes now cover required billing schema,
@@ -126,8 +126,9 @@ record the implementation and documentation. Each commit passed its configured
 formatting, vet, race and message hooks. The final all-files hook run also passed.
 All 197 versioned files matched the saved source/documentation snapshot before
 this checkpoint update. Source bytes and modes remain unchanged.
-Repository/Wiki publication is now authorized under D8 and P1. C3 and A1 are partial, and C4 is verified for only
-one native adapter. See [remaining boundaries](limitations.md) for project work,
+At that checkpoint, C3 and A1 were partial, and C4 was verified for only one
+native adapter. The current checklist and active implementation checkpoint
+supersede that earlier scope. See [remaining boundaries](limitations.md) for project work,
 provider constraints, unverified contracts and their fallbacks. These items must
 not be treated as completed merely because the source coverage gate passed.
 (User, 2026; Local workspace, 2026)

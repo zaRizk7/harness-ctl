@@ -33,8 +33,8 @@ regression covers that path without changing the production source or gate.
 The isolated native CLI/TUI smoke passed status routing and capture previews with
 zero credential/recovery writes. Both versioned macOS architectures built. POSIX
 shell, actionlint workflow, 25 Markdown/local links and 14 JSON-example checks
-passed before release-note creation. The fresh quality gate is running. The
-candidate first release is v0.1.0. No new commit or binary release has been made.
+passed before release-note creation. The final local gates and publication
+progress are recorded below. The first candidate release is v0.1.0.
 
 Subsequent credential review found that current catalog changes prevented listing
 or removing saved copies. The obsolete-profile regression failed first. Stored
@@ -44,9 +44,49 @@ source change supersedes the 7,961-statement result for final publication. Fresh
 strict race-enabled coverage now passes at exactly 7,972/7,972 production Go
 statements. The sequential quality gate passed formatting, vet and the complete
 race suite. The manager package took 422.290 seconds. All-files directive hooks
-also passed. No gate was weakened. The candidate remains unpublished until the
-atomic commit, remote CI and actual distribution checks below finish.
+also passed. No gate was weakened. The binary release and actual distribution
+checks are complete as recorded below.
 (User, 2026; Local workspace, 2026)
+
+The three conventional atomic commits `4a4dae1`, `e769e8c` and `51a7be1` passed
+their configured hooks with empty commit bodies. The isolation script verified
+restored bytes and modes before dropping each temporary stash. The final working
+tree was clean. Normal pre-push hooks passed, then source `main` and the annotated
+`v0.1.0` tag were published at `51a7be159f6dcc6e0e677024d1c2a84f73dc8612`.
+The matching native-auth/component/setup Wiki changes were published at `54dce4c`.
+Final release links and installation proof are published at `847f83a`, with all
+eight Wiki files matching their versioned sources.
+All 26 current Markdown files/local links and 14 JSON examples passed validation.
+A local-candidate setup smoke passed direct/symlink installation, private modes,
+PATH preservation, version and zero credential/recovery writes. This candidate
+check does not establish published-asset installation.
+[Source CI](https://github.com/zaRizk7/harness-ctl/actions/runs/37919674921) and
+[release CI](https://github.com/zaRizk7/harness-ctl/actions/runs/37919675206) passed
+on both architectures. The reviewed [v0.1.0 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.1.0)
+is public. Actual published-bootstrap verification passed. No live harness/account
+state was inspected or mutated. (Local workspace, 2026; GitHub, 2026)
+
+| Code | Native-management and release proof | Result |
+| --- | --- | --- |
+| NR1 | Local `make check`, `make coverage` and all-files hooks | Formatting, vet and full race suite passed. Exact 7,972/7,972 production Go statements. No checks changed |
+| NR2 | Atomic commits and normal source/tag push | All configured commit, message and pre-push hooks passed. Empty bodies, no co-author trailers, verified restoration, clean tree and no history rewrite |
+| NR3 | Source and release CI at `51a7be1` | Both macOS architectures passed native quality/race checks, versioned builds and uploads. Release arm64 independently covered exactly 7,972/7,972 statements and printed `harness-ctl v0.1.0` |
+| NR4 | Draft download, GitHub digests and local setup | All four assets match GitHub digests. Both binary architectures match their names. Installer bytes match the tag. Direct/symlink setup passed in disposable homes |
+| NR5 | Actual public `curl ... \| sh` on Apple Silicon | Latest and pinned installer/binary routes passed. Headless direct/symlink and piped interactive setup with a controlling TTY, typed approval and clean exit passed |
+| NR6 | Published setup ownership and storage | Binary mode 0700, catalog/config mode 0600, symlink target, home-confined prefix, retained shell bytes, explicit PATH append, five-second configuration and version passed. Zero account/credential/recovery writes |
+
+(Local workspace, 2026; GitHub, 2026)
+
+The first public interactive smoke reached successful setup but timed out while
+its Python runner stopped draining terminal output during shutdown. The runner
+now drains the PTY while waiting. The same published binary and installer passed
+the subsequent complete smoke. No production Go or installer change was needed.
+Intel's published binary has native CI quality/build/version proof, but actual
+public-bootstrap installation was exercised locally only on Apple Silicon.
+Signing/notarization and the remaining consumer-reporting/native adapter gaps
+remain in [limitations](limitations.md). A passing release does not close those
+requirements. Final publication notes are documentation-only and preserve the
+verified production bytes. (Local workspace, 2026; GitHub, 2026)
 
 ## Publication checkpoint, 2026-10-09
 
