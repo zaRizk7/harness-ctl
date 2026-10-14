@@ -62,7 +62,8 @@ user authorized documenting and resolving gaps after the read-only audit.
   for native subscription reports. Keep quota use, token activity, estimated
   session cost and API billing separate. Do not start inference for monitoring.
 - Full quality and exact race-enabled coverage passed at 8,173/8,173
-  production statements. Hooks and publication remain pending. Record unsupported versions and missing access
+  production statements. Feature commit and message hooks passed. Publication remains pending.
+  Record unsupported versions and missing access
   as separate limits. Do not call missing implementation a provider restriction.
 
 ## Request checklist
@@ -96,7 +97,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D3 | Convert subagent roles to native project configurations | Five native definitions parsed and validated with inherited models. Runtime delegation was not exercised because it was not authorized. |
 | D4 | Model/harness-agnostic implementation-agent documentation | Present in instruction prose. Native paths and upstream provenance URLs retain their names. |
 | D5 | MIT license | Present. |
-| E1 | 100% production coverage and unit/integration testability | Local and v0.1.1 release CI strict race-enabled gates passed at exactly 7,972/7,972 production Go statements, including obsolete-profile management and retained native authentication after manager removal. Native TUI and actual public installer smokes passed. Coverage does not prove every acceptance condition or quantify shell execution. |
+| E1 | 100% production coverage and unit/integration testability | Current source passed local strict race-enabled coverage at exactly 8,173/8,173 production Go statements. The v0.1.1 release CI result remains 7,972/7,972 statements. Native TUI and public v0.1.1 installer smokes passed. New release verification is pending. Coverage does not prove every acceptance condition or quantify shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
 | P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository, v0.1.1 binaries/installer/checksums and seven Wiki pages plus sidebar are public. Both architecture CI jobs passed. Existing Go ownership, pinned CI, exercised release automation and review/security guides remain. Exact verification and remaining gaps are in the checkpoint. |
 

@@ -35,6 +35,9 @@ jobs:
     timeout-minutes: 45
     env:
       GOTOOLCHAIN: local
+      # Run every test. Allow the filesystem recovery matrix to finish on both
+      # runner architectures, including exact aggregate coverage instrumentation.
+      GOFLAGS: -count=1 -timeout=20m
       BUILD_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5

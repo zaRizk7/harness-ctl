@@ -9,52 +9,48 @@ items are recorded below.
 
 ## Active SDK reporting checkpoint, 2026-10-14
 
-The user requested continued work with OpenRouter and official Anthropic/OpenAI
-SDK interfaces as reporting sources. A7 and A8 are recorded in the request ledger.
-The inspected Anthropic Agent SDK 0.3.296 declares `get_usage` and
-`skip_behaviors`. Its native response provides subscription windows and separate
-usage-credit spend. OpenAI documents `account/usage/read` beside native quotas.
-OpenRouter documents spend periods and effective budgets in its key report.
+The user requested OpenRouter and official Anthropic/OpenAI Software Development
+Kit (SDK) interfaces as reporting sources. A7 and A8 record this scope in the
+[request ledger](requests.md). The implementation is committed as
+`82e86ac08b822e2a3913a035f0b28138967f0306` with an empty commit body. Its normal
+commit and message hooks passed. Publication is pending.
 
-Regressions first failed for absent OpenRouter details and native SDK/token
-activity reports. The new code uses configured OpenRouter scalar mappings,
-optional OpenAI token activity and an independent native SDK control reader.
-The Anthropic contract requires initialization to confirm a runtime version at
-or above the configured minimum before
-the usage request. A guard mutation makes its regression fail before restoration.
-The shipped minimum is 2.1.296. No prompt or transcript scan is requested. Session
-estimates do not become billed API cost. Synthetic native
-source selection, unknown inventory metadata, runtime version rejection and TUI
-quota visibility pass focused race tests.
-The first full quality run timed out at 600 seconds in the existing native
-recovery fault tests. Its stack shows filesystem path validation and snapshot
-restoration. The reporting packages passed. The unchanged gate is now running
-outside the restricted sandbox with synthetic homes. The latest guard tests
-and focused race suites pass with 100% reporting-package statement coverage.
-The outside-sandbox run also reached the unchanged ten-minute deadline, in a
-later native planning fault test. A third run uses a short private `TMPDIR` to
-reduce ancestor traversal in the exhaustive fault matrix. Tests, injection
-loops, assertions and deadlines remain unchanged. Runtime initialization now
-determines support, so unknown inventory metadata no longer blocks a supported
-runtime. That focused integration regression passes. Fresh full quality, exact
-coverage and hook gates are pending. No live account state was used. Source and
-Wiki publication are pending. The short-path run also timed out at 600 seconds
-in the native uninstall/stat fault cases. A focused CPU profile of the complete
-recovery fault group passed in 83.442 seconds. Filesystem calls account for most
-sampled CPU time. That run used `-count=1`. The latest full gate disables Go's
-test-result cache with `GOFLAGS=-count=1`; the tests, race checks and ten-minute
-deadline remain unchanged. This full quality run passed formatting, vet and all
-race tests. The manager suite finished in 401.248 seconds. The unchanged strict
-coverage gate is now running with the same cache setting. Hooks and publication
-remain pending.
+The new reports use configured OpenRouter scalar mappings, optional OpenAI
+account token activity and an independent Anthropic SDK control reader. Native
+initialization must confirm a supported runtime before `get_usage`. The shipped
+minimum is 2.1.296. Unknown inventory metadata can use a runtime that confirms
+support. No inference prompt or local transcript scan is requested. Session
+estimates do not become billed API cost. Existing provider configuration remains
+unchanged on upgrade. New contracts must be applied from shipped defaults.
 
-The aggregate coverage run exceeded the Go default ten-minute allowance in the
-existing recovery fault matrix. Regular race tests passed in 401.248 seconds.
-The next coverage run uses `GOFLAGS='-count=1 -timeout=20m'`. This changes only
-the aggregate run allowance. The scripts, tests, process deadlines, race checks
-and exact 100% target remain unchanged. The strict gate passed at exactly 8,173/8,173 production Go statements.
-The instrumented manager suite finished in 741.619 seconds. Hooks and
-publication remain pending.
+Regressions first failed for absent OpenRouter details and native reports.
+A mutation of the runtime-version guard made its regression fail. The guard
+was restored. Focused race tests passed for protocol bounds, selected native
+state, version rejection, account activity, quota visibility and safe fallback.
+Synthetic native processes and HTTP fixtures supplied all account data.
+No live account or OS credential state was used.
+
+Fresh `make check` passed formatting, vet and all race tests with
+`GOFLAGS=-count=1`. The manager suite took 401.248 seconds. The strict aggregate
+`make coverage` passed at exactly **8,173/8,173 production Go statements** with
+`GOFLAGS='-count=1 -timeout=20m'`. Its manager suite took 741.619 seconds.
+Markdown validation checked 28 files, 149 local links and 15 JSON examples.
+Both the normal and instrumented suites retained all tests and race checks.
+
+Earlier ten-minute local runs timed out in existing filesystem recovery and
+planning fault tests. A focused profile of the complete recovery fault group
+passed in 83.442 seconds. Filesystem calls dominated sampled CPU time. These
+observations do not establish test caching as the cause of every delay.
+An older [Intel CI run](https://github.com/zaRizk7/harness-ctl/actions/runs/37947036044)
+also timed out at ten minutes during a recovery write. Its arm64 job passed.
+CI now requires fresh test execution and permits a bounded twenty-minute suite.
+The forty-five-minute job limit, production process deadlines, tests and exact
+coverage target are unchanged. The next source CI result remains unverified.
+
+Prepare v0.2.0 after source verification. Review draft assets, checksums and
+installation in disposable homes before publication. Source, release and Wiki
+proof must be recorded here after those checks pass. Other project work and
+provider boundaries remain in the [limitations guide](limitations.md).
 
 ## Previous native-management checkpoint, 2026-10-09
 

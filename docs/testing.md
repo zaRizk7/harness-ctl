@@ -15,15 +15,21 @@ pre-commit run --all-files
 For uncommitted new files, also pass their paths with `pre-commit run --files`.
 The all-files mode only includes tracked files. (Local workspace, 2026)
 
-Run the gates sequentially. Concurrent quality and coverage runs exceeded the
-ten-minute suite timeout during final verification. The sequential quality run
-and coverage run passed with the same tests and timeout. See the [checkpoint](implementation.md)
-for final evidence. (Local workspace, 2026)
+Run the gates sequentially. Concurrent runs can increase filesystem load.
+The recovery fault matrix repeatedly checks durable writes and rollback.
+See the [checkpoint](implementation.md) for measured gate results.
 
-For filesystem fault suites, use `GOFLAGS=-count=1` to require fresh test
-execution and disable Go's test-result cache. This setting preserves race
-checks, all tests and the suite deadline. The current quality run passed with
-it. See the active checkpoint for measured results.
+Use `GOFLAGS=-count=1` to require fresh test execution and disable Go's
+test-result cache. The current local quality run passed with this setting.
+Aggregate coverage took more than ten minutes on the development host. CI uses
+`GOFLAGS='-count=1 -timeout=20m'` for a bounded twenty-minute suite allowance.
+The CI job still has a forty-five-minute limit. Tests, race checks, production
+process deadlines and the exact 100% target remain unchanged.
+
+```sh
+GOTOOLCHAIN=local GOFLAGS=-count=1 make check
+GOTOOLCHAIN=local GOFLAGS='-count=1 -timeout=20m' make coverage
+```
 
 ## Test boundaries
 
