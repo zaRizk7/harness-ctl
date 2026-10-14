@@ -31,9 +31,20 @@ harness-ctl accounts monitor --watch personal
 This record provides metadata and native account pages. For supported native
 OpenAI quota windows, explicitly add `report_harness: "codex"` and optionally
 `report_install_id` from `list`. The selected native source must already be
-signed in to the intended subscription. Anthropic/Google consumer numeric
-adapters remain unimplemented or unverified. Do not infer numeric limits from
-plan labels. (Project, 2026)
+signed in to the intended subscription. For Anthropic, use
+`provider: "anthropic"` and `report_harness: "claude"`. The shipped experimental
+SDK contract requires initialization to confirm version 2.1.296 or later. Unknown
+runtime versions and prereleases cannot report through it. Unknown inventory
+metadata does not block a runtime that confirms support. Google consumer numeric
+reporting remains project work. Do not infer limits from plan labels.
+
+OpenAI reports optional account token summaries and daily buckets beside quotas.
+An unsupported token-activity method preserves valid quota data. Anthropic reads
+native SDK quota windows and usage-credit spend. It requests no prompt or local
+transcript scan. Session cost estimates do not become API bills. Native access
+scopes and organization policy still apply. Live account access remains untested.
+See the [account guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/accounts.md)
+for contracts, version limits and configuration updates.
 
 ## Native authentication and encrypted profiles
 
@@ -84,7 +95,11 @@ Paid plan changes and invoices open provider pages. The manager does not purchas
 plans or revoke remote keys. Google costs need an existing readable billing
 export and authorized reporting token. External providers configure identity,
 key environment, HTTPS origins and reporting adapter separately. An OpenRouter
-credit limit differs from rolling API cost and subscription quotas. (Project, 2026)
+credit limit differs from rolling API cost and subscription quotas. Complete
+OpenRouter reports include spend periods, bring-your-own-key spend, reset policy
+and effective budgets when available. Missing values remain unavailable.
+Existing provider configuration is preserved on upgrade. Apply new mappings
+from the shipped defaults when required. (Project, 2026)
 
 ## TUI visibility and freshness
 

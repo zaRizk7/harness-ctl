@@ -16,7 +16,7 @@ recovery. Adapters supply native contracts instead of a universal harness loop.
 | Launch profiles | `profiles.go`, `registry.go` | Copy scoped state, preserve profile writes and generate managed shims |
 | Launch execution | `launch.go`, `internal/launch/` | Secure adapter defaults, argument forwarding, interactive streams and inference-key selection |
 | Batch and manager removal | `batch.go`, `self.go` | One locked sequential batch, stale previews, independent state choices and executable removal last |
-| Provider accounts | `accounts.go`, `accounts_cli.go`, `internal/providers/`, `internal/appserver/`, `internal/vault/` | Encrypted account vault, separate inference/reporting keys, bounded paginated read-only reports and provider cooldowns |
+| Provider accounts | `accounts.go`, `accounts_cli.go`, `internal/providers/`, `internal/appserver/`, `internal/sdkreport/`, `internal/vault/` | Encrypted accounts, separate key roles, configured key reports, native quota readers and provider cooldowns |
 | Shared library | `internal/library/`, `library.go`, `library_cli.go`, `library_tui.go` | Encrypted reusable records, compatibility, captured assets and approved sequential fan-out |
 | Setup | `internal/setup/`, `setup.go`, `setup_tui.go`, `scripts/install.sh` | Publisher checksum, private prefix, optional owned launcher, non-overwriting configuration initialization |
 | User interface | `internal/editor/`, `tui.go`, `components_tui.go`, `management_tui.go`, `monitor_tui.go`, `capabilities.go` | Screen transitions, private editor requests and validation, owner/scope controls, typed approval and cancellation |

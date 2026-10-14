@@ -17,7 +17,7 @@ func (r *reader) subscriptionLimits(ctx context.Context, a Account, p Spec, m Me
 		m.Notes = append(m.Notes, "Subscription usage, invoices and plan limits require the provider's account page. No subscription report source is selected.")
 		return m
 	}
-	if p.SubscriptionAdapter != "app_server" || r.cfg.NativeReport == nil {
+	if (p.SubscriptionAdapter != "app_server" && p.SubscriptionAdapter != "sdk_control") || r.cfg.NativeReport == nil {
 		m.Errors = append(m.Errors, "Selected native subscription reporting contract is unavailable")
 		return m
 	}
@@ -25,6 +25,9 @@ func (r *reader) subscriptionLimits(ctx context.Context, a Account, p Spec, m Me
 	if err != nil {
 		m.Errors = append(m.Errors, err.Error())
 		return m
+	}
+	if p.SubscriptionAdapter == "sdk_control" {
+		return sdkSubscription(data, m)
 	}
 	type window struct {
 		Used     *float64 `json:"usedPercent"`
@@ -37,12 +40,20 @@ func (r *reader) subscriptionLimits(ctx context.Context, a Account, p Spec, m Me
 		Plan               string `json:"planType"`
 	}
 	var response struct {
-		Single  *bucket           `json:"rateLimits"`
-		Buckets map[string]bucket `json:"rateLimitsByLimitId"`
+		Single    *bucket           `json:"rateLimits"`
+		Buckets   map[string]bucket `json:"rateLimitsByLimitId"`
+		Usage     json.RawMessage   `json:"usage"`
+		UsageNote string            `json:"usageNote"`
 	}
 	if json.Unmarshal(data, &response) != nil {
 		m.Errors = append(m.Errors, "Invalid native subscription report")
 		return m
+	}
+	if response.UsageNote != "" {
+		m.Notes = append(m.Notes, response.UsageNote)
+	}
+	if len(response.Usage) > 0 && string(response.Usage) != "null" {
+		m = accountActivity(response.Usage, m)
 	}
 	if response.Buckets == nil && response.Single != nil {
 		response.Buckets = map[string]bucket{response.Single.ID: *response.Single}
@@ -54,6 +65,9 @@ func (r *reader) subscriptionLimits(ctx context.Context, a Account, p Spec, m Me
 	slices.Sort(ids)
 	for _, id := range ids {
 		b := response.Buckets[id]
+		if b.Plan != "" {
+			m.Notes = append(m.Notes, id+" plan: "+b.Plan)
+		}
 		for index, w := range []*window{b.Primary, b.Secondary} {
 			if w == nil {
 				continue

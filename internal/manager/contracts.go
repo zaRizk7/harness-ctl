@@ -7,6 +7,7 @@ import (
 	"github.com/zaRizk7/harness-ctl/internal/appserver"
 	harnesscatalog "github.com/zaRizk7/harness-ctl/internal/catalog"
 	"github.com/zaRizk7/harness-ctl/internal/providers"
+	"github.com/zaRizk7/harness-ctl/internal/sdkreport"
 	"os"
 	"strings"
 	"time"
@@ -60,7 +61,7 @@ func (e *engine) monitorAccount(ctx context.Context, a account, now time.Time) a
 }
 
 // nativeSubscriptionReport selects an installed catalog entry's native state and
-// reads app-server limits. It never copies tokens or creates an inference turn.
+// reads a native account report. It never copies tokens or requests inference.
 func (e *engine) nativeSubscriptionReport(ctx context.Context, a account) (json.RawMessage, error) {
 	if err := e.validateAccount(a); err != nil {
 		return nil, err
@@ -87,6 +88,7 @@ func (e *engine) nativeSubscriptionReport(ctx context.Context, a account) (json.
 	if selected.ID == "" {
 		return nil, fmt.Errorf("subscription report harness is not installed")
 	}
+	p, _ := e.providerFor(a.Provider) // validateAccount resolved this contract.
 	c, err := state.launchCommand(selected, nil, true)
 	if err != nil {
 		return nil, err
@@ -104,5 +106,8 @@ func (e *engine) nativeSubscriptionReport(ctx context.Context, a account) (json.
 	for _, key := range sortedKeys(env) {
 		pairs = append(pairs, key+"="+env[key])
 	}
-	return appserver.ReadLimits(ctx, c.Path, []string{"app-server", "--listen", "stdio://"}, pairs, e.cfg.MetadataBytes, e.cfg.MonitorMaxPages)
+	if p.SubscriptionAdapter == "sdk_control" {
+		return sdkreport.ReadUsage(ctx, c.Path, pairs, e.cfg.Root, p.SubscriptionMinVersion, e.cfg.MetadataBytes, e.cfg.MonitorMaxPages)
+	}
+	return appserver.ReadAccount(ctx, c.Path, []string{"app-server", "--listen", "stdio://"}, pairs, e.cfg.MetadataBytes, e.cfg.MonitorMaxPages)
 }

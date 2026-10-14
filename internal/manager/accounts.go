@@ -65,7 +65,7 @@ func (e *engine) validateAccount(a account) error {
 		if err != nil {
 			return err
 		}
-		if a.ReportHarness != "codex" || provider.SubscriptionAdapter != "app_server" {
+		if !((a.ReportHarness == "codex" && provider.SubscriptionAdapter == "app_server") || (a.ReportHarness == "claude" && provider.SubscriptionAdapter == "sdk_control")) {
 			return fmt.Errorf("selected provider/harness has no verified native subscription contract")
 		}
 	}

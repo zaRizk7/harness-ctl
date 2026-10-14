@@ -94,13 +94,16 @@ Self-uninstall with `--state` removes the complete credential vault.
 
 ## Native reporting
 
-OpenAI subscription windows use the existing bounded native app-server reporting
-adapter and the selected installation's sign-in. Anthropic and Google consumer
-numeric quota exports have not been verified. Native `/usage` and `/stats`
+OpenAI subscription windows and optional token activity use the bounded native
+app-server adapter. Anthropic subscription reports use the experimental SDK
+control adapter with a verified minimum version and no requested transcript scan.
+Both use the selected installation's native sign-in. Google consumer reporting
+remains project work. Native `/usage` and `/stats`
 interfaces are available through the router, and provider billing pages remain
 linked from accounts. The manager does not execute an inference prompt to obtain
 statistics or reproduce private consumer reporting endpoints. A native statistics
-view does not establish an automatic five-second structured report.
+view does not establish an automatic five-second structured report. Read the
+[account guide](accounts.md) for reporting scopes, access and version limits.
 (Local workspace, 2026; OpenAI, 2026; Anthropic, 2026; Google, 2026)
 
 ## References

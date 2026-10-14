@@ -60,8 +60,10 @@ environment name. Removing a harness does not remove provider accounts.
 | OpenAI API | Organization completions usage, organization costs, project rate limits when a project is selected | Organization admin/reporting credential | Keys, usage/limits, billing and invoices |
 | Anthropic API | Organization message token usage, costs and organization rate limits | Organization Admin API credential with reporting access | Keys, limits, billing and invoices |
 | Google API | Request counts, quota limits, billing linkage and optional net project costs from an existing billing export | Google Cloud OAuth reporting token, project ID and export read access | Keys, invoices and plan changes |
-| OpenAI subscription | Optional native quota windows, percentage used and reset time | Explicit native report source with an existing subscription sign-in | Billing, invoices and plan changes |
-| Other consumer subscriptions | Local label/plan metadata and provider links | Native sign-in | Usage, plan limits, invoices and plan changes. Numeric adapters remain unverified project work |
+| OpenAI subscription | Native quota windows, reset times and optional account token activity | Explicit native report source with an existing subscription sign-in | Billing, invoices and plan changes |
+| Anthropic subscription | Native quota windows and usage-credit spend, when available | Explicit native report source, eligible native sign-in and a supported version | Billing, invoices and plan changes |
+| OpenRouter API key | Key spend by period, key limits and effective budget | Inference key for the documented key-report endpoint | Keys, activity and credit management |
+| Other consumer subscriptions | Local label/plan metadata and provider links | Native sign-in | Numeric adapters remain unverified project work |
 
 The default refresh is **5 seconds**. `refresh_seconds` configures TUI and CLI
 polling. A compact report is visible throughout the TUI. F2 toggles complete details. A single poller runs across screens, independently of account-preview freshness. `monitor --watch` refreshes
@@ -108,13 +110,61 @@ change the subscription. The provider contract must select
 ```
 
 Omit `report_install_id` to select the active matching installation. A bounded
-local JSONL process initializes, then reads `account/rateLimits/read`. Reports
+local JSONL process initializes, then reads `account/rateLimits/read`. It also
+reads `account/usage/read` for token summaries and daily buckets. An unsupported
+usage method leaves valid quotas available. Reports
 prefer named buckets and show available usage percentages, window durations and
 reset timestamps. Missing fields remain unavailable. Source labels are local
 metadata, so select the sign-in/profile for the intended account. Invoices and
-plan changes use account links. Other consumer subscription adapters are not
-implemented or verified. This is a project gap, not proof of a vendor prohibition.
+plan changes use account links. Account activity has a separate scope from API
+usage and billing. Null values stay unavailable.
 (OpenAI, 2026; Local workspace, 2026)
+
+### Anthropic native reports
+
+The software development kit (SDK) supplies a native reporting contract.
+
+Select a native installation with an existing subscription sign-in:
+
+```json
+{
+  "id": "anthropic-personal",
+  "provider": "anthropic",
+  "kind": "subscription",
+  "report_harness": "claude",
+  "enabled": true
+}
+```
+
+The shipped contract selects `subscription_adapter: "sdk_control"` and
+`subscription_min_version: "2.1.296"`. This minimum matches the inspected
+Agent SDK 0.3.296 contract. Unknown runtime versions, prereleases and older
+versions cannot use this adapter. Inventory metadata can remain unknown when
+initialization confirms a supported runtime. Change the minimum only after verification of the
+native protocol and `skip_behaviors` support.
+
+The manager initializes the native control protocol. Initialization must confirm
+the CLI version before any usage request. Missing or older version replies stop
+reporting. The manager then requests
+`get_usage` with `skip_behaviors: true`. It sends no prompt. It does not request
+a local transcript scan. Native arguments disable user settings, hooks and
+tools. They also disable Model Context Protocol (MCP) servers and transcript
+persistence. Organization-managed policy still
+applies. The report uses the selected installation's state environment.
+
+The SDK method is experimental. Its response can change. The manager reports
+available quota percentages and reset times. It keeps server-reported usage
+credits separate from API cost. Credit amounts use the reported currency's
+minor units. For example, USD minor units are cents. A null spending cap does
+not remove organization limits. Session cost estimates are omitted.
+
+Missing sign-in scopes or unsupported contracts leave data unavailable. Use
+native `/usage` and account links when this occurs. Development tests use
+synthetic native processes. Live account access and managed policy behavior
+remain untested. The five-second UI refresh remains in effect. The shipped
+Anthropic fetch interval remains 60 seconds. See the
+[official SDK reference](https://code.claude.com/docs/en/agent-sdk/typescript)
+and [SDK v0.3.296](https://github.com/anthropics/claude-agent-sdk-typescript/releases/tag/v0.3.296).
 
 ## Google export costs
 
@@ -173,13 +223,34 @@ environment overrides are rejected. (Local workspace, 2026)
 OpenRouter ships with key credit reporting through `GET /api/v1/key`. Its
 all-time credits, credit limit and remaining credits are separate from token
 usage, rolling API dollar costs and consumer subscription limits. A null limit
-is unlimited. It explicitly uses its inference key for this endpoint. Other
+means no key cap. Other effective budgets can still apply. It explicitly uses
+its inference key for this endpoint. Other
 reporting adapters retain separate admin/reporting credentials. (OpenRouter, 2026)
+
+Complete reports also show daily, weekly and monthly spend. They include
+bring-your-own-key spend, key reset policy and effective budget fields when
+supplied. Bring your own key means that OpenRouter uses a key for an external
+model provider. Missing fields stay unavailable. Key spend does not become a
+rolling API invoice. The compact TUI report shows the key total and limits.
+Press **F2** for period and budget details. CLI JSON contains the same values.
+See the [official key-report contract](https://openrouter.ai/docs/api/api-reference/api-keys/get-current-api-key).
 
 The reusable `key_usage` adapter maps an `object_pointer`, `cost_field`,
 `limit_field`, `remaining_field` and `unit` from a provider's HTTPS JSON response.
 Configure it only against the provider's verified contract. Provider URLs and
 key-introspection field names live in user configuration. (Local workspace, 2026)
+
+Optional `key_usage.fields` entries select extra scalar values. Each entry has
+`pointer`, `label`, `type` and optional `unit` and `null_label`. Pointers are
+relative to `object_pointer`. Supported types are `amount`, `text` and
+`boolean`. Amounts must be finite and nonnegative. The adapter publishes only
+selected fields. It does not publish the response object.
+
+An existing `providers` configuration remains unchanged on binary upgrade.
+Apply the required fields from the
+[shipped defaults](../internal/providers/providers.json) to your configuration
+to enable new contracts. Retain your endpoint and credential choices. Account
+changes still require the usual preview and approval.
 
 Native OAuth routing and opt-in encrypted file-backed credential profiles use
 the [authentication manager](authentication.md). Inference keys, reporting keys

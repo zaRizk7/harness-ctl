@@ -25,6 +25,8 @@
     "subscription_url": "https://claude.ai/settings/billing",
     "key_env": "ANTHROPIC_API_KEY",
     "report_adapter": "anthropic",
+    "subscription_adapter": "sdk_control",
+    "subscription_min_version": "2.1.296",
     "min_report_seconds": 60
   },
   {
@@ -55,7 +57,26 @@
       "cost_field": "usage",
       "limit_field": "limit",
       "remaining_field": "limit_remaining",
-      "unit": "credits"
+      "unit": "credits",
+      "fields": [
+        { "pointer": "/usage_daily", "label": "Daily key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/usage_weekly", "label": "Weekly key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/usage_monthly", "label": "Monthly key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/byok_usage", "label": "Own-provider key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/byok_usage_daily", "label": "Daily own-provider key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/byok_usage_weekly", "label": "Weekly own-provider key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/byok_usage_monthly", "label": "Monthly own-provider key spend", "type": "amount", "unit": "credits" },
+        { "pointer": "/limit_reset", "label": "Key limit reset", "type": "text", "null_label": "none" },
+        { "pointer": "/include_byok_in_limit", "label": "Own-provider spend counts toward key limit", "type": "boolean" },
+        { "pointer": "/effective_budget/scope", "label": "Effective budget scope", "type": "text" },
+        { "pointer": "/effective_budget/limit_usd", "label": "Effective budget limit", "type": "amount", "unit": "USD", "null_label": "no account cap reported" },
+        { "pointer": "/effective_budget/remaining_usd", "label": "Effective budget remaining", "type": "amount", "unit": "USD" },
+        { "pointer": "/effective_budget/spend_usd", "label": "Effective budget spend", "type": "amount", "unit": "USD" },
+        { "pointer": "/effective_budget/reset_interval", "label": "Effective budget interval", "type": "text", "null_label": "none" },
+        { "pointer": "/effective_budget/resets_at", "label": "Effective budget reset", "type": "text", "null_label": "none" },
+        { "pointer": "/free_model_daily_requests/limit", "label": "Free-model daily request limit", "type": "amount", "unit": "requests" },
+        { "pointer": "/free_model_daily_requests/remaining", "label": "Free-model daily requests remaining", "type": "amount", "unit": "requests" }
+      ]
     },
     "key_env": "OPENROUTER_API_KEY",
     "billing_url": "https://openrouter.ai/settings/credits",

@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/url"
 	"strings"
 )
@@ -10,11 +11,23 @@ import (
 // KeyUsageSpec maps a provider's key introspection response without binding its
 // identity to code. Null limits mean unlimited. Credits are distinct from tokens.
 type KeyUsageSpec struct {
-	ObjectPointer  string `json:"object_pointer"`
-	CostField      string `json:"cost_field"`
-	LimitField     string `json:"limit_field"`
-	RemainingField string `json:"remaining_field"`
-	Unit           string `json:"unit"`
+	ObjectPointer  string          `json:"object_pointer"`
+	CostField      string          `json:"cost_field"`
+	LimitField     string          `json:"limit_field"`
+	RemainingField string          `json:"remaining_field"`
+	Unit           string          `json:"unit"`
+	Fields         []KeyUsageField `json:"fields,omitempty"`
+}
+
+// KeyUsageField selects one extra report value relative to ObjectPointer. Type
+// is amount, text or boolean. NullLabel describes a documented null value.
+// Missing or invalid values stay unavailable; no response object is published.
+type KeyUsageField struct {
+	Pointer   string `json:"pointer"`
+	Label     string `json:"label"`
+	Type      string `json:"type"`
+	Unit      string `json:"unit,omitempty"`
+	NullLabel string `json:"null_label,omitempty"`
 }
 
 // monitorKeyUsage reads configured key credit usage, without an inference call.
@@ -69,6 +82,44 @@ func (r *reader) monitorKeyUsage(ctx context.Context, a Account, p Spec, m Metri
 			m.Errors = append(m.Errors, field.label+": invalid value")
 		}
 	}
+	for _, field := range p.KeyUsage.Fields {
+		m.Notes = append(m.Notes, keyUsageDetail(object, field))
+	}
 	m.Notes = append(m.Notes, "Key credit usage uses the provider's configured accounting period. It is not token usage or a consumer subscription limit.")
 	return m
+}
+
+// keyUsageDetail formats a selected scalar. Numbers must be finite and positive
+// or zero. Nested objects, missing fields and type changes never become zero use.
+func keyUsageDetail(object map[string]any, field KeyUsageField) string {
+	var value any = object
+	for _, part := range strings.Split(strings.TrimPrefix(field.Pointer, "/"), "/") {
+		parent, ok := value.(map[string]any)
+		if !ok {
+			return field.Label + ": unavailable"
+		}
+		value, ok = parent[strings.ReplaceAll(strings.ReplaceAll(part, "~1", "/"), "~0", "~")]
+		if !ok {
+			return field.Label + ": unavailable"
+		}
+	}
+	if value == nil && field.NullLabel != "" {
+		return field.Label + ": " + field.NullLabel
+	}
+	text := "unavailable"
+	switch field.Type {
+	case "amount":
+		if number, ok := value.(float64); ok && number >= 0 && !math.IsInf(number, 0) && !math.IsNaN(number) {
+			text = strings.TrimSpace(fmt.Sprintf("%g %s", number, field.Unit))
+		}
+	case "text":
+		if s, ok := value.(string); ok && s != "" {
+			text = s
+		}
+	case "boolean":
+		if flag, ok := value.(bool); ok {
+			text = fmt.Sprint(flag)
+		}
+	}
+	return field.Label + ": " + text
 }

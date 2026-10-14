@@ -1,7 +1,7 @@
 # User request ledger
 
-This is the durable acceptance record for the 23 requests beyond the original
-plan and the subsequent public publication request. Preserve the codes across
+This is the durable acceptance record for requests beyond the original plan,
+including publication and SDK reporting. Preserve the codes across
 implementation, audits and compaction. Read this
 file with [the checkpoint](implementation.md) before continuing work. The latest
 user authorized documenting and resolving gaps after the read-only audit.
@@ -54,6 +54,17 @@ user authorized documenting and resolving gaps after the read-only audit.
 
 (User, 2026)
 
+## SDK reporting follow-up, 2026-10-14
+
+- A7: Include OpenRouter in the next reporting work. Keep provider identities,
+  response fields and endpoint settings in data.
+- A8: Use the official Anthropic and OpenAI SDK interfaces as starting points
+  for native subscription reports. Keep quota use, token activity, estimated
+  session cost and API billing separate. Do not start inference for monitoring.
+- Full quality and exact race-enabled coverage passed at 8,173/8,173
+  production statements. Hooks and publication remain pending. Record unsupported versions and missing access
+  as separate limits. Do not call missing implementation a provider restriction.
+
 ## Request checklist
 
 Present means found in source. Historical means recorded verification, not a
@@ -77,8 +88,8 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | C2 | One umbrella for shareable components | Present. Encrypted reusable library with approved selected-harness application. Retain compatibility and recovery guards. |
 | C3 | Track components installed outside harness-ctl | Expanded. Direct native additions are rescanned. Explicit component_sources expose read-only project/system inventory. Non-user plugin ledger registrations retain provenance. External payload mutations and unconfigured roots remain ownership/scope boundaries. |
 | C4 | Manage marketplaces where harnesses support them, including non-TUI operation | Claude and Codex native adapters support list/add/source-edit/refresh-or-upgrade/remove. Scoped caches/configuration join encrypted recovery. Local source repositories remain external. Other adapters and live vendor execution remain unverified. |
-| A1 | Independent API keys/subscriptions, usage/limits/billing, real-time monitoring defaulting to 5s | Implemented in part, F2. Optional documented app-server subscription quota reporting and read-only Google billing export costs now exist. Required export schema and reporting-source identity now have passing regressions. Other consumer adapters remain unverified. Upstream freshness remains a provider constraint. |
-| A2 | Configurable external providers such as OpenRouter without tight identity coupling | Present. Identity, reporting adapter, environment and credentials are configured separately. |
+| A1 | Independent API keys/subscriptions, usage/limits/billing, real-time monitoring defaulting to 5s | Implemented in part, F2. Native OpenAI quotas and optional token activity, experimental Anthropic SDK quotas/usage credits and read-only Google billing export costs are present. Full quality and exact race-enabled coverage passed at 8,173/8,173 statements. Google consumer reporting remains project work. Access, supported versions and freshness remain separate constraints. |
+| A2 | Configurable external providers such as OpenRouter without tight identity coupling | Present. Identity, reporting adapter, environment and credentials are configured separately. OpenRouter spend periods and effective-budget details now use configured scalar mappings. Full quality and exact race-enabled coverage passed. |
 | A3 | Compact monitoring throughout the TUI with a key for complete information | Present UI. F2 details and global polling. Actual available data remains subject to A1. |
 | D1 | Standard Go package/function documentation describing arguments and returns | Implemented, F6. Production functions have comments. Exported planning, codec, process, setup and key-store contracts now describe arguments/results and mutation boundaries. Guides describe current reporting/PATH behavior. |
 | D2 | Documents under docs except summaries, licenses and primary directives | Present for operator/developer guides. Discovery-required skills/role configurations remain at native directive paths. |

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/zaRizk7/harness-ctl/internal/sdkreport"
 )
 
 var identityPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`)
@@ -42,25 +44,26 @@ type Account struct {
 // Spec defines documented API origins, endpoint paths and native Account
 // pages. Configuration changes explicitly select where credentials may be sent.
 type Spec struct {
-	ReportAdapter       string            `json:"report_adapter,omitempty"`
-	ReportCredential    string            `json:"report_credential,omitempty"`
-	LaunchEnv           map[string]string `json:"launch_env,omitempty"`
-	KeyUsage            *KeyUsageSpec     `json:"key_usage,omitempty"`
-	ID                  string            `json:"id"`
-	QuotaOrigin         string            `json:"quota_origin,omitempty"`
-	BillingOrigin       string            `json:"billing_origin,omitempty"`
-	APIOrigin           string            `json:"api_origin"`
-	UsagePath           string            `json:"usage_path"`
-	CostPath            string            `json:"cost_path"`
-	LimitsPath          string            `json:"limits_path"`
-	BillingURL          string            `json:"billing_url"`
-	UsageURL            string            `json:"usage_url"`
-	KeysURL             string            `json:"keys_url"`
-	SubscriptionURL     string            `json:"subscription_url"`
-	KeyEnv              string            `json:"key_env"`
-	ExportOrigin        string            `json:"export_origin,omitempty"`
-	SubscriptionAdapter string            `json:"subscription_adapter,omitempty"`
-	MinReportSeconds    int               `json:"min_report_seconds,omitempty"`
+	ReportAdapter          string            `json:"report_adapter,omitempty"`
+	ReportCredential       string            `json:"report_credential,omitempty"`
+	LaunchEnv              map[string]string `json:"launch_env,omitempty"`
+	KeyUsage               *KeyUsageSpec     `json:"key_usage,omitempty"`
+	ID                     string            `json:"id"`
+	QuotaOrigin            string            `json:"quota_origin,omitempty"`
+	BillingOrigin          string            `json:"billing_origin,omitempty"`
+	APIOrigin              string            `json:"api_origin"`
+	UsagePath              string            `json:"usage_path"`
+	CostPath               string            `json:"cost_path"`
+	LimitsPath             string            `json:"limits_path"`
+	BillingURL             string            `json:"billing_url"`
+	UsageURL               string            `json:"usage_url"`
+	KeysURL                string            `json:"keys_url"`
+	SubscriptionURL        string            `json:"subscription_url"`
+	KeyEnv                 string            `json:"key_env"`
+	ExportOrigin           string            `json:"export_origin,omitempty"`
+	SubscriptionAdapter    string            `json:"subscription_adapter,omitempty"`
+	SubscriptionMinVersion string            `json:"subscription_min_version,omitempty"`
+	MinReportSeconds       int               `json:"min_report_seconds,omitempty"`
 }
 
 //go:embed providers.json
@@ -100,8 +103,11 @@ func Validate(specs []Spec) error {
 		if p.MinReportSeconds < 0 || int64(p.MinReportSeconds) > int64((1<<63-1)/time.Second) {
 			return fmt.Errorf("invalid minimum reporting interval")
 		}
-		if p.SubscriptionAdapter != "" && p.SubscriptionAdapter != "app_server" {
+		if p.SubscriptionAdapter != "" && p.SubscriptionAdapter != "app_server" && p.SubscriptionAdapter != "sdk_control" {
 			return fmt.Errorf("unknown subscription reporting adapter")
+		}
+		if p.SubscriptionAdapter == "sdk_control" && !sdkreport.VersionAtLeast(p.SubscriptionMinVersion, p.SubscriptionMinVersion) {
+			return fmt.Errorf("native SDK reporting requires a verified minimum version")
 		}
 		if adapter != "" && adapter != "openai" && adapter != "anthropic" && adapter != "google" && adapter != "key_usage" {
 			return fmt.Errorf("unknown reporting adapter")
@@ -114,6 +120,13 @@ func Validate(specs []Spec) error {
 		}
 		if adapter == "key_usage" && (p.KeyUsage == nil || p.KeyUsage.CostField == "") {
 			return fmt.Errorf("key usage requires configured field mappings")
+		}
+		if p.KeyUsage != nil {
+			for _, field := range p.KeyUsage.Fields {
+				if !strings.HasPrefix(field.Pointer, "/") || field.Label == "" || (field.Type != "amount" && field.Type != "text" && field.Type != "boolean") {
+					return fmt.Errorf("invalid key usage detail mapping")
+				}
+			}
 		}
 		if protectedEnvironment(p.KeyEnv) {
 			return fmt.Errorf("credentials cannot override process or state environment")

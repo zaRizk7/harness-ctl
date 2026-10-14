@@ -20,6 +20,11 @@ ten-minute suite timeout during final verification. The sequential quality run
 and coverage run passed with the same tests and timeout. See the [checkpoint](implementation.md)
 for final evidence. (Local workspace, 2026)
 
+For filesystem fault suites, use `GOFLAGS=-count=1` to require fresh test
+execution and disable Go's test-result cache. This setting preserves race
+checks, all tests and the suite deadline. The current quality run passed with
+it. See the active checkpoint for measured results.
+
 ## Test boundaries
 
 | Boundary | Proof | Real-system effects |

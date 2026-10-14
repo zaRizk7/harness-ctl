@@ -7,7 +7,56 @@ and the user's authorization to resolve its gaps. Current verification and open
 items are recorded below.
 (User, 2026; Local workspace, 2026)
 
-## Active native-management checkpoint, 2026-10-09
+## Active SDK reporting checkpoint, 2026-10-14
+
+The user requested continued work with OpenRouter and official Anthropic/OpenAI
+SDK interfaces as reporting sources. A7 and A8 are recorded in the request ledger.
+The inspected Anthropic Agent SDK 0.3.296 declares `get_usage` and
+`skip_behaviors`. Its native response provides subscription windows and separate
+usage-credit spend. OpenAI documents `account/usage/read` beside native quotas.
+OpenRouter documents spend periods and effective budgets in its key report.
+
+Regressions first failed for absent OpenRouter details and native SDK/token
+activity reports. The new code uses configured OpenRouter scalar mappings,
+optional OpenAI token activity and an independent native SDK control reader.
+The Anthropic contract requires initialization to confirm a runtime version at
+or above the configured minimum before
+the usage request. A guard mutation makes its regression fail before restoration.
+The shipped minimum is 2.1.296. No prompt or transcript scan is requested. Session
+estimates do not become billed API cost. Synthetic native
+source selection, unknown inventory metadata, runtime version rejection and TUI
+quota visibility pass focused race tests.
+The first full quality run timed out at 600 seconds in the existing native
+recovery fault tests. Its stack shows filesystem path validation and snapshot
+restoration. The reporting packages passed. The unchanged gate is now running
+outside the restricted sandbox with synthetic homes. The latest guard tests
+and focused race suites pass with 100% reporting-package statement coverage.
+The outside-sandbox run also reached the unchanged ten-minute deadline, in a
+later native planning fault test. A third run uses a short private `TMPDIR` to
+reduce ancestor traversal in the exhaustive fault matrix. Tests, injection
+loops, assertions and deadlines remain unchanged. Runtime initialization now
+determines support, so unknown inventory metadata no longer blocks a supported
+runtime. That focused integration regression passes. Fresh full quality, exact
+coverage and hook gates are pending. No live account state was used. Source and
+Wiki publication are pending. The short-path run also timed out at 600 seconds
+in the native uninstall/stat fault cases. A focused CPU profile of the complete
+recovery fault group passed in 83.442 seconds. Filesystem calls account for most
+sampled CPU time. That run used `-count=1`. The latest full gate disables Go's
+test-result cache with `GOFLAGS=-count=1`; the tests, race checks and ten-minute
+deadline remain unchanged. This full quality run passed formatting, vet and all
+race tests. The manager suite finished in 401.248 seconds. The unchanged strict
+coverage gate is now running with the same cache setting. Hooks and publication
+remain pending.
+
+The aggregate coverage run exceeded the Go default ten-minute allowance in the
+existing recovery fault matrix. Regular race tests passed in 401.248 seconds.
+The next coverage run uses `GOFLAGS='-count=1 -timeout=20m'`. This changes only
+the aggregate run allowance. The scripts, tests, process deadlines, race checks
+and exact 100% target remain unchanged. The strict gate passed at exactly 8,173/8,173 production Go statements.
+The instrumented manager suite finished in 741.619 seconds. Hooks and
+publication remain pending.
+
+## Previous native-management checkpoint, 2026-10-09
 
 Final review reproduced a retained-launcher regression after manager removal
 with both manager-state choices. Native auth prefixes unconditionally executed
