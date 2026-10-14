@@ -13,7 +13,9 @@ The user requested OpenRouter and official Anthropic/OpenAI Software Development
 Kit (SDK) interfaces as reporting sources. A7 and A8 record this scope in the
 [request ledger](requests.md). The implementation is committed as
 `82e86ac08b822e2a3913a035f0b28138967f0306` with an empty commit body. Its normal
-commit and message hooks passed. Publication is pending.
+commit and message hooks passed. Normal pre-push hooks also passed. Source
+`main` and the annotated v0.2.0 tag are public at
+`def73535a82fb17b6b4b8fd1cc96c3bca3bd7e92`.
 
 The new reports use configured OpenRouter scalar mappings, optional OpenAI
 account token activity and an independent Anthropic SDK control reader. Native
@@ -45,12 +47,31 @@ An older [Intel CI run](https://github.com/zaRizk7/harness-ctl/actions/runs/3794
 also timed out at ten minutes during a recovery write. Its arm64 job passed.
 CI now requires fresh test execution and permits a bounded twenty-minute suite.
 The forty-five-minute job limit, production process deadlines, tests and exact
-coverage target are unchanged. The next source CI result remains unverified.
+coverage target are unchanged. Fresh source CI passed on both architectures.
 
-Prepare v0.2.0 after source verification. Review draft assets, checksums and
-installation in disposable homes before publication. Source, release and Wiki
-proof must be recorded here after those checks pass. Other project work and
-provider boundaries remain in the [limitations guide](limitations.md).
+[Source CI](https://github.com/zaRizk7/harness-ctl/actions/runs/38497335780) and
+[release CI](https://github.com/zaRizk7/harness-ctl/actions/runs/38497335974) passed
+for the exact tag commit on both native macOS architectures. Both arm64 strict
+coverage gates independently covered exactly 8,173/8,173 statements. Both release
+builds printed `harness-ctl v0.2.0`. The release Intel manager race suite took
+717.051 seconds, within the configured twenty-minute allowance.
+
+The reviewed [v0.2.0 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.2.0)
+is public. All four assets match GitHub digests and sizes. The checksum manifest
+is complete, and `install.sh` matches the tagged source. The installer regression
+first rejected v0.1.1 at its absent Anthropic SDK contract. Local and draft
+candidates then passed direct/symlink setup. Actual public latest/pinned downloads,
+headless direct/symlink installation and interactive piped setup passed in
+disposable Apple Silicon homes. Private modes, PATH preservation, version and
+new provider defaults passed. No credential or recovery files were created.
+Intel's public installer and live provider accounts were not tested locally.
+
+Final Wiki guidance is committed at `5b119cfcf68b3ac8ee0bab21db6eb0e309010ec6`.
+All eight Wiki files match their versioned sources. Installation and developer
+tutorials now describe the public v0.2.0 release. These final source changes
+contain documentation only. Publication uses the normal commit, message and
+pre-push hooks. Other project work and provider boundaries remain in the
+[limitations guide](limitations.md).
 
 ## Previous native-management checkpoint, 2026-10-09
 

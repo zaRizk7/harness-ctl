@@ -38,6 +38,10 @@ runtime versions and prereleases cannot report through it. Unknown inventory
 metadata does not block a runtime that confirms support. Google consumer numeric
 reporting remains project work. Do not infer limits from plan labels.
 
+Version v0.2.0 adds OpenAI token activity, Anthropic SDK reports and OpenRouter
+period/budget details. Existing provider configuration is preserved on upgrade.
+Apply required contracts from the shipped defaults.
+
 OpenAI reports optional account token summaries and daily buckets beside quotas.
 An unsupported token-activity method preserves valid quota data. Anthropic reads
 native SDK quota windows and usage-credit spend. It requests no prompt or local

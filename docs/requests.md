@@ -62,7 +62,10 @@ user authorized documenting and resolving gaps after the read-only audit.
   for native subscription reports. Keep quota use, token activity, estimated
   session cost and API billing separate. Do not start inference for monitoring.
 - Full quality and exact race-enabled coverage passed at 8,173/8,173
-  production statements. Feature commit and message hooks passed. Publication remains pending.
+  production statements. Feature commit, message and normal pre-push hooks passed. Source and Wiki
+  updates are public. Both architecture source/release CI jobs passed. Exact
+  release coverage is 8,173/8,173. Public v0.2.0 latest/pinned headless and
+  interactive installation passed in disposable Apple Silicon homes.
   Record unsupported versions and missing access
   as separate limits. Do not call missing implementation a provider restriction.
 
@@ -84,7 +87,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | H6 | Secure automatic launch defaults, with labelled native fallback | Implemented, F1. Independent catalog launch rules preserve security defaults for model-only overrides in direct launches and shims. Unchanged legacy policies normalize without rewriting user edits. |
 | I1 | Remove the hard-coded Go harness catalog | Present. JSON metadata is configurable. Native format/install contracts remain adapter code. |
 | I2 | Install catalog.json in the manager's user directory | Present. Non-overwriting setup and startup loading. |
-| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | Implemented and published in v0.1.1. Actual latest/pinned curl installation passed headless direct/symlink and interactive TTY setup on Apple Silicon, including checksums, private modes, PATH preservation and clean exit. Intel native CI passed quality/build/version checks. Signing/notarization remain unconfigured. |
+| I3 | Curl bootstrap, setup TUI/headless, private prefix, symlink/direct install, secure flexible defaults | Implemented and published in v0.2.0. Actual latest/pinned curl installation passed headless direct/symlink and interactive TTY setup on Apple Silicon, including checksums, private modes, PATH preservation and clean exit. Intel native CI passed quality/build/version checks. Signing/notarization remain unconfigured. |
 | C1 | Recognize harness-specific plugins/extensions and manage their native contracts | Implemented, F3. Imports and captured library files share manifest detection, including Pi. Unknown formats make no compatibility claim. |
 | C2 | One umbrella for shareable components | Present. Encrypted reusable library with approved selected-harness application. Retain compatibility and recovery guards. |
 | C3 | Track components installed outside harness-ctl | Expanded. Direct native additions are rescanned. Explicit component_sources expose read-only project/system inventory. Non-user plugin ledger registrations retain provenance. External payload mutations and unconfigured roots remain ownership/scope boundaries. |
@@ -97,9 +100,9 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D3 | Convert subagent roles to native project configurations | Five native definitions parsed and validated with inherited models. Runtime delegation was not exercised because it was not authorized. |
 | D4 | Model/harness-agnostic implementation-agent documentation | Present in instruction prose. Native paths and upstream provenance URLs retain their names. |
 | D5 | MIT license | Present. |
-| E1 | 100% production coverage and unit/integration testability | Current source passed local strict race-enabled coverage at exactly 8,173/8,173 production Go statements. The v0.1.1 release CI result remains 7,972/7,972 statements. Native TUI and public v0.1.1 installer smokes passed. New release verification is pending. Coverage does not prove every acceptance condition or quantify shell execution. |
+| E1 | 100% production coverage and unit/integration testability | Current source, native source CI and v0.2.0 release CI passed strict race-enabled coverage at exactly 8,173/8,173 production Go statements. Native TUI and public latest/pinned v0.2.0 installer smokes passed. Coverage does not prove every acceptance condition or quantify shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
-| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository, v0.1.1 binaries/installer/checksums and seven Wiki pages plus sidebar are public. Both architecture CI jobs passed. Existing Go ownership, pinned CI, exercised release automation and review/security guides remain. Exact verification and remaining gaps are in the checkpoint. |
+| P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository, v0.2.0 binaries/installer/checksums and seven Wiki pages plus sidebar are public. Both architecture CI jobs passed. Existing Go ownership, pinned CI, exercised release automation and review/security guides remain. Exact verification and remaining gaps are in the checkpoint. |
 
 (User, 2026; Local workspace, 2026)
 

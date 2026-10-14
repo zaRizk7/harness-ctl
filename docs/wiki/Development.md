@@ -11,8 +11,8 @@ used only for explicitly requested delegation. (Project, 2026)
 export GOTOOLCHAIN=local
 make hooks
 make build
-make check
-make coverage
+GOFLAGS=-count=1 make check
+GOFLAGS='-count=1 -timeout=20m' make coverage
 pre-commit run --all-files
 ```
 
@@ -31,8 +31,10 @@ atomic commits with empty bodies and no co-author trailers. See
 for the review path. (Project, 2026)
 
 CI checks both macOS architectures and produces commit-versioned build artifacts.
-A future version tag triggers verified binaries and a **draft** release. No
-binary release is currently published. The
+A version tag triggers verified binaries and a **draft** release. The reviewed
+[v0.2.0 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.2.0) is public.
+CI uses fresh test execution and a bounded twenty-minute suite allowance.
+The tests, race checks and exact coverage target remain unchanged. The
 [maintainer guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/releasing.md)
 describes release review and Wiki publication. (Project, 2026)
 
