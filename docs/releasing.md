@@ -2,8 +2,9 @@
 
 The public destination is [zaRizk7/harness-ctl](https://github.com/zaRizk7/harness-ctl).
 The repository, Wiki and functional binary bootstrap may be published. The first
-public binary release was v0.1.0. The current feature release is v0.2.0. Both
-architecture CI jobs and the actual public Apple Silicon installer smoke passed.
+public binary release was v0.1.0. The current feature release is v0.2.0.
+The latest patch is v0.2.1. Both architecture CI jobs and the actual public
+Apple Silicon installer smoke passed.
 See the [checkpoint](implementation.md)
 for exact proof. Signing/notarization remain unconfigured. Do not describe an
 unpublished draft or CI artifact as an installed, signed or notarized release.

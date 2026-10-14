@@ -32,8 +32,10 @@ F8 records this manager defect. Setting the default `CLAUDE_CONFIG_DIR` can
 change the native credential namespace even when the filesystem directory
 appears equivalent. The synthetic regression first failed with
 `default native auth was moved to an explicit credential namespace`.
-The narrow fix retains the caller's original namespace for an unconfigured,
-unmanaged default installation in the current user's home. Explicit manager
+The comparison proves a change in auth status. The exact native storage
+mechanism was not verified. The narrow fix retains the caller's original
+namespace for an unconfigured, unmanaged default installation in the current
+user's home. Explicit manager
 roots, installation roots, named profiles and custom catalog contracts still
 bind their selected state directory. Shipped metadata supplies the defaults.
 
@@ -47,7 +49,30 @@ The manager suite took 747.830 seconds. The strict race-enabled
 `make coverage` passed at exactly **8,179/8,179 production Go statements**.
 Both commands used `GOFLAGS='-count=1 -timeout=20m'`. No check was changed.
 Markdown validation passed for 30 files, 151 local links and 15 JSON examples.
-Conventional commit, normal push and patch release gates are pending.
+The conventional fix commit is
+`bce82450d743a964e5d4cfbabaaf1d96b6c77824`. Its normal commit/message
+and pre-push hooks passed. The commit body is empty. Source `main` and the
+annotated v0.2.1 tag were pushed atomically at that commit. Remote heads
+match. [Source CI](https://github.com/zaRizk7/harness-ctl/actions/runs/38533583668)
+and [release CI](https://github.com/zaRizk7/harness-ctl/actions/runs/38533583591)
+passed on both native macOS architectures. Both Apple Silicon coverage
+gates independently reached exactly 8,179/8,179 statements. Both release
+binaries printed `harness-ctl v0.2.1`. Release Intel manager tests took
+527.032 seconds. All four draft assets match GitHub digests and sizes.
+The checksum manifest is complete, and the installer matches the tag.
+Draft direct/symlink setup passed in disposable Apple Silicon homes.
+
+The reviewed [v0.2.1 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.2.1)
+is public. Actual latest/pinned downloads, headless direct/symlink
+installation and interactive piped setup with a controlling terminal passed
+in disposable Apple Silicon homes. Private modes, preserved PATH, provider
+defaults, version and absence of manager credential/recovery files passed.
+Intel's public installer remains untested locally. No additional live
+provider requests ran during distribution verification. The updated Wiki is
+public at `16e3e812d15bcb102400272c14f2796a6f26ed7f`. All eight pages
+match their versioned sources. This final source follow-up contains
+documentation only. The verified production code is unchanged. Configured
+commit, message and pre-push hooks apply to its publication.
 
 ## Published SDK reporting checkpoint, 2026-10-14
 

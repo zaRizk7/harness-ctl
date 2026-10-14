@@ -32,7 +32,7 @@ for the review path. (Project, 2026)
 
 CI checks both macOS architectures and produces commit-versioned build artifacts.
 A version tag triggers verified binaries and a **draft** release. The reviewed
-[v0.2.0 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.2.0) is public.
+[v0.2.1 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.2.1) is public.
 CI uses fresh test execution and a bounded twenty-minute suite allowance.
 The tests, race checks and exact coverage target remain unchanged. The
 [maintainer guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/releasing.md)
