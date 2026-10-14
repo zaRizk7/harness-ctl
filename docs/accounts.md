@@ -151,6 +151,10 @@ a local transcript scan. Native arguments disable user settings, hooks and
 tools. They also disable Model Context Protocol (MCP) servers and transcript
 persistence. Organization-managed policy still
 applies. The report uses the selected installation's state environment.
+For an unconfigured default native installation, the manager preserves the
+caller's original `CLAUDE_CONFIG_DIR`. Forcing an equivalent directory can
+change the native credential namespace. Explicit manager roots, installation
+roots, named profiles and custom catalog paths keep their selected environment.
 
 The SDK method is experimental. Its response can change. The manager reports
 available quota percentages and reset times. It keeps server-reported usage
@@ -160,9 +164,11 @@ not remove organization limits. Session cost estimates are omitted.
 
 Missing sign-in scopes or unsupported contracts leave data unavailable. Use
 native `/usage` and account links when this occurs. Development tests use
-synthetic native processes. Live account access and managed policy behavior
-remain untested. The five-second UI refresh remains in effect. The shipped
-Anthropic fetch interval remains 60 seconds. See the
+synthetic native processes. User-authorized live checks also verified existing
+Anthropic/OpenAI subscription auth and OpenRouter key reporting. Managed policy
+behavior and other account/version combinations remain untested. The five-second
+UI refresh remains in effect. The shipped Anthropic fetch interval remains
+60 seconds. See the
 [official SDK reference](https://code.claude.com/docs/en/agent-sdk/typescript)
 and [SDK v0.3.296](https://github.com/anthropics/claude-agent-sdk-typescript/releases/tag/v0.3.296).
 

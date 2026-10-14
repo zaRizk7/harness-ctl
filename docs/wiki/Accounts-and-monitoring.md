@@ -46,7 +46,10 @@ OpenAI reports optional account token summaries and daily buckets beside quotas.
 An unsupported token-activity method preserves valid quota data. Anthropic reads
 native SDK quota windows and usage-credit spend. It requests no prompt or local
 transcript scan. Session cost estimates do not become API bills. Native access
-scopes and organization policy still apply. Live account access remains untested.
+scopes and organization policy still apply. User-authorized live checks passed
+for existing native subscription auth and an existing OpenRouter key after the
+default namespace fix. Other versions and
+managed policy behavior remain untested.
 See the [account guide](https://github.com/zaRizk7/harness-ctl/blob/main/docs/accounts.md)
 for contracts, version limits and configuration updates.
 
@@ -54,8 +57,10 @@ for contracts, version limits and configuration updates.
 
 Use `harness-ctl auth login HARNESS` to authenticate through the selected native
 installation. Generated launchers also route matching native commands, including
-`claude auth login`. Native OAuth and token refresh stay native. Credential
-management can opt into approved capture/restore of declared native files.
+`claude auth login`. Native OAuth and token refresh stay native. An unconfigured
+default Claude installation retains its inherited credential namespace.
+Explicit manager roots and named profiles remain scoped. Credential management
+can opt into approved capture/restore of declared native files.
 OS Keychain secrets remain in their native store. (Project, 2026)
 
 From v0.1.1, new or regenerated launchers retain native authentication when the

@@ -69,6 +69,20 @@ user authorized documenting and resolving gaps after the read-only audit.
   Record unsupported versions and missing access
   as separate limits. Do not call missing implementation a provider restriction.
 
+## Existing-auth verification, 2026-10-14
+
+- A9: Test existing Anthropic, OpenRouter and OpenAI auth without prompting for
+  another sign-in. Use native subscription reporting and the existing API key.
+- User-authorized live checks found F8: forcing the default native config
+  directory changed the credential namespace and hid an existing sign-in.
+- The regression failed first. The source fix preserves the inherited default
+  namespace and keeps explicit roots/profiles isolated. All three live report
+  checks passed after the fix. No inference, login/logout, paid change or manager
+  credential-vault write ran. Do not publish keys, identities or personal usage.
+- Full hermetic quality and strict race-enabled coverage passed at exactly
+  8,179/8,179 production Go statements. Conventional atomic commit, push and
+  patch release verification remain pending.
+
 ## Request checklist
 
 Present means found in source. Historical means recorded verification, not a
@@ -100,7 +114,7 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
 | D3 | Convert subagent roles to native project configurations | Five native definitions parsed and validated with inherited models. Runtime delegation was not exercised because it was not authorized. |
 | D4 | Model/harness-agnostic implementation-agent documentation | Present in instruction prose. Native paths and upstream provenance URLs retain their names. |
 | D5 | MIT license | Present. |
-| E1 | 100% production coverage and unit/integration testability | Current source, native source CI and v0.2.0 release CI passed strict race-enabled coverage at exactly 8,173/8,173 production Go statements. Native TUI and public latest/pinned v0.2.0 installer smokes passed. Coverage does not prove every acceptance condition or quantify shell execution. |
+| E1 | 100% production coverage and unit/integration testability | The F8 source fix passed local quality and strict race-enabled coverage at exactly 8,179/8,179 production Go statements. Its publication gates remain pending. Earlier native source CI and v0.2.0 release CI passed at exactly 8,173/8,173 statements. Native TUI and public latest/pinned v0.2.0 installer smokes passed. Coverage does not prove every acceptance condition or quantify shell execution. |
 | E2 | Self-contained functional modules and smaller manager footprint | Implemented, F5. Native codecs/classification/field traversal moved to stateconfig. Local component planning and parked-array contracts moved to component. Launch policy and app-server protocol have independent ownership. Manager retains transaction/owner validation. Full race and coverage gates passed. |
 | P1 | Public GitHub repository through gh, quality Go application structure and Wiki tutorials | Repository, v0.2.0 binaries/installer/checksums and seven Wiki pages plus sidebar are public. Both architecture CI jobs passed. Existing Go ownership, pinned CI, exercised release automation and review/security guides remain. Exact verification and remaining gaps are in the checkpoint. |
 
@@ -131,6 +145,11 @@ relabel an unimplemented adapter as an unavoidable vendor limitation.
   v0.1.1 tag, binaries and installer are public. Both native architecture CI jobs
   passed. Latest/pinned public installation passed in disposable Apple Silicon
   homes. Existing v0.1.0 launchers require approved regeneration.
+- F8: An unconfigured default native authentication scope must retain its
+  inherited environment. The default config-directory override changed native
+  auth status from signed in to signed out. The synthetic regression failed
+  before the fix. All three user-authorized live report checks passed after it.
+  Explicit managed roots, profiles and custom catalog contracts remain bound.
 
 (Local workspace, 2026)
 

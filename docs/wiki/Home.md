@@ -14,7 +14,7 @@ recovery. Apple Silicon and Intel builds are supported. (Project, 2026)
 | [Recovery and removal](Recovery-and-removal) | Recover captured state and choose manager/harness removal independently |
 | [Development](Development) | Find package ownership, run strict gates and publish reviewed docs |
 
-Start with the [v0.1.0 release](https://github.com/zaRizk7/harness-ctl/releases/tag/v0.1.0)
+Start with the [latest release](https://github.com/zaRizk7/harness-ctl/releases/latest)
 or source installation.
 Read the [remaining boundaries](https://github.com/zaRizk7/harness-ctl/blob/main/docs/limitations.md)
 before relying on consumer quotas, project/system inventory or an unverified

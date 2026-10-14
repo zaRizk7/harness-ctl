@@ -7,7 +7,49 @@ and the user's authorization to resolve its gaps. Current verification and open
 items are recorded below.
 (User, 2026; Local workspace, 2026)
 
-## Active SDK reporting checkpoint, 2026-10-14
+## Active live-auth verification checkpoint, 2026-10-14
+
+The user authorized reading existing Anthropic, OpenRouter and OpenAI auth.
+No new sign-in, login/logout command, inference turn or billing mutation was
+requested. This authorization applies to the live reporting checks below.
+The regular unit/integration suite remains hermetic. No live credential is
+part of its fixtures or source. The manager was absent from PATH and its
+standard state directory was absent, so the source engine used a temporary
+manager root and in-memory account records. The existing OpenRouter key was
+read in memory from its native auth store. No manager vault, registry or
+recovery files were created. No credentials or personal usage values are
+recorded in this public checkpoint.
+
+The first production-adapter live check passed OpenAI native quota/token
+activity and OpenRouter key spend/budgets. Anthropic returned no quota windows.
+Native `auth status` confirmed an existing subscription sign-in without the
+manager's directory override. The same status command with the forced default
+directory reported signed out. A bounded native SDK comparison then returned
+quota data with the original environment. The response matches the adapter's
+supported control contract.
+
+F8 records this manager defect. Setting the default `CLAUDE_CONFIG_DIR` can
+change the native credential namespace even when the filesystem directory
+appears equivalent. The synthetic regression first failed with
+`default native auth was moved to an explicit credential namespace`.
+The narrow fix retains the caller's original namespace for an unconfigured,
+unmanaged default installation in the current user's home. Explicit manager
+roots, installation roots, named profiles and custom catalog contracts still
+bind their selected state directory. Shipped metadata supplies the defaults.
+
+Focused race tests passed in 3.193 seconds. After the fix, all three live
+production-adapter subtests passed in 3.80 seconds. Native Anthropic/OpenAI
+quota windows, OpenAI account token activity and OpenRouter key reporting were
+available without a new sign-in. The temporary live helper was removed from
+the repository. Its private local report remains outside version control.
+Fresh `make check` passed formatting, vet and the complete race suite.
+The manager suite took 747.830 seconds. The strict race-enabled
+`make coverage` passed at exactly **8,179/8,179 production Go statements**.
+Both commands used `GOFLAGS='-count=1 -timeout=20m'`. No check was changed.
+Markdown validation passed for 30 files, 151 local links and 15 JSON examples.
+Conventional commit, normal push and patch release gates are pending.
+
+## Published SDK reporting checkpoint, 2026-10-14
 
 The user requested OpenRouter and official Anthropic/OpenAI Software Development
 Kit (SDK) interfaces as reporting sources. A7 and A8 record this scope in the

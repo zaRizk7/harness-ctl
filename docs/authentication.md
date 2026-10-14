@@ -7,6 +7,13 @@ encrypted [account vault](accounts.md). Opt-in profiles also keep encrypted copi
 of declared file-backed native credentials. OS Keychain secrets remain in their
 native store. (User, 2026; Local workspace, 2026)
 
+An unconfigured default Claude installation retains the caller's original
+`CLAUDE_CONFIG_DIR`. Forcing this variable can hide an existing sign-in, even
+for an equivalent directory. Explicit manager roots,
+installation roots, named profiles and custom catalog paths still use their
+selected state. This avoids requiring a new sign-in for an existing default
+native installation.
+
 ## Native routing
 
 ```sh

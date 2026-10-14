@@ -97,11 +97,13 @@ func sortedKeys[V any](m map[string]V) []string {
 }
 
 // launchEnvironment returns native state/runtime environment overrides for inst
-// and root. It never reads credential values.
+// and root. Unconfigured default native authentication retains the caller's
+// credential namespace. Explicit state/profile choices remain bound to root.
+// It never reads credential values.
 func (e *engine) launchEnvironment(inst installation, root string) map[string]string {
 	s, _ := e.specFor(inst.Harness)
 	env := map[string]string{"GOTOOLCHAIN": "local", "DISABLE_AUTOUPDATER": "1"}
-	if s.HomeEnv != "" {
+	if s.HomeEnv != "" && !(s.ID == "claude" && e.inheritsNativeHome(s, inst, root)) {
 		env[s.HomeEnv] = root
 	}
 	if s.ID == "gemini" {
@@ -120,6 +122,21 @@ func (e *engine) launchEnvironment(inst installation, root string) map[string]st
 		env["UV_PYTHON_INSTALL_DIR"] = filepath.Join(inst.Root, "python")
 	}
 	return env
+}
+
+// inheritsNativeHome reports whether s uses the caller's unchanged native home.
+// inst and root must have no explicit manager state/profile selection. Shipped
+// metadata supplies the default directory; custom catalog contracts stay explicit.
+func (e *engine) inheritsNativeHome(s harnessSpec, inst installation, root string) bool {
+	if inst.Managed || inst.StateRoot != "" || e.reg.Profiles[inst.ID].Root != "" || e.cfg.StateRoots[s.ID] != "" || e.cfg.Home != os.Getenv("HOME") {
+		return false
+	}
+	for _, original := range defaultCatalog() {
+		if original.ID == s.ID {
+			return s.HomeEnv == original.HomeEnv && s.DefaultHome == original.DefaultHome && root == filepath.Join(e.cfg.Home, original.DefaultHome)
+		}
+	}
+	return false
 }
 
 // writeShim publishes inst's scoped direct launcher. Registered ownership is

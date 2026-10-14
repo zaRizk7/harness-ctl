@@ -66,7 +66,8 @@ architectures and enforces exact production statement coverage. (Project, 2026)
 
 Consumer subscription reporting, external payload mutations and other
 marketplace adapters still have explicit gaps. Source tests use synthetic
-boundaries, so live vendor compatibility remains unverified. Review
+boundaries. User-authorized live reporting passed with existing Anthropic,
+OpenAI and OpenRouter auth. Other live integrations remain unverified. Review
 [remaining boundaries](docs/limitations.md) before relying on those integrations.
 (Project, 2026)
 
